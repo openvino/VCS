@@ -1,0 +1,17 @@
+# Copyright SecureKey Technologies Inc. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+
+coverage:
+  status:
+    project:
+      default:
+        target: 70%
+    patch:
+      default:
+        target: 75%
+        only_pulls: true
+
+ignore:
+  - "test/bdd"  # ignore bdd tests
+  - "component/walletcli"  # ignore walletcli testing tool

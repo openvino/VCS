@@ -1,0 +1,19 @@
+#
+# Copyright SecureKey Technologies Inc. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+package: verifier
+output: openapi.gen.go
+generate:
+  models: true
+  echo-server: true
+  embedded-spec: false
+import-mapping:
+  ./common.yaml: github.com/trustbloc/vcs/pkg/restapi/v1/common
+output-options:
+  include-tags:
+    - verifier
+  exclude-schemas:
+    - PresentationDefinition

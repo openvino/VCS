@@ -1,0 +1,46 @@
+{
+	"@context": [
+		"https://www.w3.org/2018/credentials/v1",
+		"https://www.w3.org/2018/credentials/examples/v1"
+	],
+	"type": "VerifiablePresentation",
+	"verifiableCredential": {
+		"@context": [
+			"https://www.w3.org/2018/credentials/v1",
+			"https://www.w3.org/2018/credentials/examples/v1"
+		],
+		"type": [
+			"VerifiableCredential",
+			"UniversityDegreeCredential"
+		],
+		"id": "http://example.gov/credentials/ff98f978-588f-4eb0-b17b-60c18e1dac2c",
+		"issuanceDate": "2020-03-16T22:37:26.544Z",
+		"issuer": {
+			"id": "did:web:vc.transmute.world",
+			"name": "University"
+		},
+		"credentialSubject": {
+			"id": "did:example:ebfeb1f712ebc6f1c276e12ec21",
+			"degree": {
+				"type": "BachelorDegree",
+				"degree": "MIT"
+			},
+			"name": "Jayden Doe",
+			"spouse": "did:example:c276e12ec21ebfeb1f712ebc6f1"
+		},
+		"proof": {
+			"type": "Ed25519Signature2018",
+			"created": "2019-12-11T03:50:55Z",
+			"verificationMethod": "did:web:vc.transmute.world#z6MksHh7qHWvybLg5QTPPdG2DgEjjduBDArV9EF9mRiRzMBN",
+			"proofPurpose": "assertionMethod",
+			"jws": "eyJhbGciOiJFZERTQSIsImI2NCI6ZmFsc2UsImNyaXQiOlsiYjY0Il19..hckTjvJ8umMsgAdsgPfAYGKYh-4IqqvuGOX_kbNMwpkwyslFj_XKl06wgJDDMLkmnvHHEk74FDBUL_F_0mdeAA"
+		}
+	},
+	"proof": {
+		"type": "Ed25519Signature2018",
+		"created": "2020-05-13T20:20:38Z",
+		"verificationMethod": "did:web:vc.transmute.world#z6MksHh7qHWvybLg5QTPPdG2DgEjjduBDArV9EF9mRiRzMBN",
+		"proofPurpose": "assertionMethod",
+		"jws": "eyJhbGciOiJFZERTQSIsImI2NCI6ZmFsc2UsImNyaXQiOlsiYjY0Il19..DyVNsocDJ1l0xwgok2hSJ0bveRLcCJcYhZKNuaJDpQnzj-sb6L_vl_5hMA_dn9S0zNVI-1MAm4-XxMDo1OzBBQ"
+	}
+}

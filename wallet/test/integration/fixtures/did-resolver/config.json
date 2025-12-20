@@ -1,0 +1,21 @@
+{
+  "rules": [
+    {
+      "pattern": "^(did:key:.+)$"
+    },
+    {
+      "pattern": "^(did:orb:.+)$"
+    },
+    {
+      "pattern": "^(did:web:.+)$"
+    },
+    {
+      "pattern": "^(did:ion:.+)$",
+      "url": "https://uniresolver.io/1.0/identifiers/$1"
+    },
+    {
+      "pattern": "^(did:.+)$",
+      "url": "https://uniresolver.io/1.0/identifiers/$1"
+    }
+  ]
+}

@@ -1,0 +1,355 @@
+#
+# Copyright Avast Software. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+name: "wallet-sdk ci"
+
+env:
+  GO_VERSION: '1.23.4'
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  SemanticPullRequest:
+    name: Semantic Pull Request Check
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: amannn/action-semantic-pull-request@v5
+        with:
+          requireScope: true
+          scopes: |
+            sdk
+            app
+            deps
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  Checks:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - name: Run checks
+        run: |
+          echo $PATH
+          go env
+          echo ${{ github.workspace }}
+          make checks
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  UnitTest:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - name: Run unit test
+        run: make unit-test
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_UPLOAD_TOKEN }}
+
+  SDKIntegrationTest:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - name: Run Integration tests
+        run: |
+          echo '127.0.0.1 file-server.trustbloc.local' | sudo tee -a /etc/hosts
+          echo '127.0.0.1 did-resolver.trustbloc.local' | sudo tee -a /etc/hosts
+          echo '127.0.0.1 vc-rest-echo.trustbloc.local' | sudo tee -a /etc/hosts
+          echo '127.0.0.1 api-gateway.trustbloc.local' | sudo tee -a /etc/hosts
+          echo '127.0.0.1 cognito-mock.trustbloc.local' | sudo tee -a /etc/hosts
+          make integration-test
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  BuildMockLoginConsentServer:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - name: Build docker images for test server
+        run: |
+          docker build -f ./images/mocks/loginconsent/Dockerfile --no-cache -t wallet-sdk/mock-login-consent:latest \
+          --build-arg GO_VER=1.23 \
+          --build-arg ALPINE_VER=3.20 .
+      - name: Save docker image as tar
+        run: |
+          docker save --output /tmp/mock-login-consent.tar wallet-sdk/mock-login-consent
+      - name: Upload image to artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mock-login-consent
+          path: /tmp/mock-login-consent.tar
+
+  BuildMockSampleWebhookServer:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - name: Build docker images for test server
+        run: |
+          docker build -f ./images/mocks/webhook/Dockerfile --no-cache -t wallet-sdk/sample-webhook:latest \
+          --build-arg GO_VER=1.23 \
+          --build-arg ALPINE_VER=3.20 .
+      - name: Save docker image as tar
+        run: |
+          docker save --output /tmp/mock-sample-webhook.tar wallet-sdk/sample-webhook
+      - name: Upload image to artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mock-sample-webhook
+          path: /tmp/mock-sample-webhook.tar
+
+  BuilMockTrustRegistryServer:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - name: Build docker images for test server
+        run: |
+          docker build -f ./images/mocks/trustregistry/Dockerfile --no-cache -t wallet-sdk/mock-trust-registry:latest \
+          --build-arg GO_VER=1.23 \
+          --build-arg ALPINE_VER=3.20 .
+      - name: Save docker image as tar
+        run: |
+          docker save --output /tmp/mock-trust-registry.tar wallet-sdk/mock-trust-registry
+      - name: Upload image to artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mock-trust-registry
+          path: /tmp/mock-trust-registry.tar
+
+  BuilMockAttestationServer:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - name: Build docker images for test server
+        run: |
+          docker build -f ./images/mocks/attestation/Dockerfile --no-cache -t wallet-sdk/mock-attestation:latest \
+          --build-arg GO_VER=1.23 \
+          --build-arg ALPINE_VER=3.20 .
+      - name: Save docker image as tar
+        run: |
+          docker save --output /tmp/mock-attestation.tar wallet-sdk/mock-attestation
+      - name: Upload image to artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mock-attestation
+          path: /tmp/mock-attestation.tar
+
+  iOSFlutterIntegrationTest:
+    runs-on: macos-13
+    needs: [ BuildMockLoginConsentServer, BuilMockTrustRegistryServer, BuilMockAttestationServer, BuildMockSampleWebhookServer ]
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - name: Generate and copy iOS Binding
+        run: |
+          echo $PATH
+          echo ${{ github.workspace }}
+          echo ${GOPATH}
+          echo ${GOROOT}
+          export PATH=$PATH:$GOPATH/bin
+          echo $PATH
+          go install golang.org/x/mobile/cmd/gomobile@latest
+          gomobile init
+          NEW_VERSION=testVer GIT_REV=testRev BUILD_TIME=testTime make generate-ios-bindings copy-ios-bindings
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GOPATH: /Users/runner/work/wallet-sdk/go
+      - name: Setup hosts
+        run: |
+          echo '127.0.0.1 file-server.trustbloc.local' | sudo tee -a /etc/hosts
+          echo '127.0.0.1 did-resolver.trustbloc.local' | sudo tee -a /etc/hosts
+          echo '127.0.0.1 vc-rest-echo.trustbloc.local' | sudo tee -a /etc/hosts
+          echo '127.0.0.1 api-gateway.trustbloc.local' | sudo tee -a /etc/hosts
+          echo '127.0.0.1 cognito-mock.trustbloc.local' | sudo tee -a /etc/hosts
+      - name: Install and start docker
+        uses: douglascamata/setup-docker-macos-action@v1-alpha
+        with:
+          upgrade-qemu: false
+          lima: v1.0.4
+          colima: v0.8.1
+      - name: Download artifacts (Docker images) from previous workflows
+        uses: actions/download-artifact@v4
+      - name: Load mock-login-consent server
+        run: |
+          docker load --input mock-login-consent/mock-login-consent.tar
+      - name: Load mock test registry server
+        run: |
+          docker load --input mock-trust-registry/mock-trust-registry.tar
+      - name: Load mock attestation server
+        run: |
+          docker load --input mock-attestation/mock-attestation.tar
+      - name: Load mock-sample-webhook server
+        run: |
+          docker load --input mock-sample-webhook/mock-sample-webhook.tar
+      - name: Generate test cli and keys
+        run: |
+          make build-integration-cli generate-test-keys
+      - name: Setup env for integration test
+        run: |
+          make start-integration-env-flutter
+      - name: Setup Flutter SDK
+        uses: flutter-actions/setup-flutter@v2
+        with:
+          channel: stable
+          version: 3.27.4
+      - name: Install flutter app dependencies
+        run: make install-flutter-dependencies
+      - name: Run iOS Simulator
+        uses: futureware-tech/simulator-action@v3
+        with:
+          model: 'iPhone 15'
+      - name: Remove AppIcon contents file (Simulator build fails with this file)
+        run: |
+          rm -rf demo/app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Contents.json
+          rm -rf demo/app/ios/Runner/Assets.xcassets/LaunchImage.imageset/Contents.json
+      - name: Debug Path
+        run: ls -lah $GITHUB_WORKSPACE/demo/app/integration_test/
+      - name: Fix file permissions
+        run: chmod +r $GITHUB_WORKSPACE/demo/app/integration_test/openid4ci_test.dart
+      - name: Run flutter tests on Simulator
+        run: make integration-test-flutter
+      - name: Run ios tests on Simulator
+        run: make integration-test-ios
+      - name: Docker container status output
+        if: always()
+        run: |
+          docker images
+          docker ps -a
+
+  AndroidFlutterIntegrationTest:
+    runs-on: macos-13
+    needs: [ BuildMockLoginConsentServer, BuilMockTrustRegistryServer, BuilMockAttestationServer, BuildMockSampleWebhookServer ]
+    timeout-minutes: 60
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - name: Generate and copy Android Binding
+        run: |
+          echo $PATH
+          echo ${{ github.workspace }}
+          echo ${GOPATH}
+          echo ${GOROOT}
+          export PATH=$PATH:$GOPATH/bin
+          echo $PATH
+          go install golang.org/x/mobile/cmd/gomobile@latest
+          gomobile init
+          NEW_VERSION=testVer GIT_REV=testRev BUILD_TIME=testTime make generate-android-bindings copy-android-bindings
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GOPATH: /Users/runner/work/wallet-sdk/go
+      - name: Setup hosts
+        run: |
+          echo '127.0.0.1 file-server.trustbloc.local' | sudo tee -a /etc/hosts
+          echo '127.0.0.1 did-resolver.trustbloc.local' | sudo tee -a /etc/hosts
+          echo '127.0.0.1 vc-rest-echo.trustbloc.local' | sudo tee -a /etc/hosts
+          echo '127.0.0.1 api-gateway.trustbloc.local' | sudo tee -a /etc/hosts
+          echo '127.0.0.1 cognito-mock.trustbloc.local' | sudo tee -a /etc/hosts
+      - name: Install and start docker
+        uses: douglascamata/setup-docker-macos-action@v1-alpha
+        with:
+          upgrade-qemu: false
+          lima: v1.0.4
+          colima: v0.8.1
+      - name: Download artifacts (Docker images) from previous workflows
+        uses: actions/download-artifact@v4
+      - name: Load mock-login-consent server
+        run: |
+          docker load --input mock-login-consent/mock-login-consent.tar
+      - name: Load mock test registry server
+        run: |
+          docker load --input mock-trust-registry/mock-trust-registry.tar
+      - name: Load mock attestation server
+        run: |
+          docker load --input mock-attestation/mock-attestation.tar
+      - name: Load mock-sample-webhook server
+        run: |
+          docker load --input mock-sample-webhook/mock-sample-webhook.tar
+      - name: Generate test cli and keys
+        run: |
+          make build-integration-cli generate-test-keys
+      - name: Setup env for integration test
+        run: |
+          make start-integration-env-flutter
+      - name: Gradle cache
+        uses: gradle/gradle-build-action@v3
+      - uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '21'
+      - name: Setup Flutter SDK
+        uses: flutter-actions/setup-flutter@v2
+        with:
+          channel: stable
+          version: 3.27.4
+      - name: Install flutter app dependencies
+        run: make install-flutter-dependencies
+      - name: Build APK in Debug mode
+        run: |
+          cd demo/app
+          flutter build apk --debug
+      - name: Run flutter and android tests on Emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 32
+          arch: x86_64
+          force-avd-creation: false
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: adb reverse tcp:8075 tcp:8075 && adb reverse tcp:8072 tcp:8072 && adb reverse tcp:9229 tcp:9229 && adb reverse tcp:8097 tcp:8097 && make integration-test-flutter integration-test-android
+      - name: Docker container status output
+        if: always()
+        run: |
+          docker images
+          docker ps -a

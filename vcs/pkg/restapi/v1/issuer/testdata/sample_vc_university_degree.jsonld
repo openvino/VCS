@@ -1,0 +1,39 @@
+{
+  "@context": [
+    "https://www.w3.org/2018/credentials/v1",
+    "https://www.w3.org/2018/credentials/examples/v1",
+    "https://w3id.org/security/bbs/v1"
+  ],
+  "credentialSchema": [],
+  "credentialSubject": {
+      "alumniOf": {
+        "id": "did:example:c276e12ec21ebfeb1f712ebc6f1",
+        "name": [
+            {
+              "value": "Example University",
+              "lang": "en"
+            },
+            {
+              "value": "Exemple d'Université",
+              "lang": "fr"
+            }
+        ]
+      },
+      "degree": {
+        "type": "BachelorDegree",
+        "name": "Bachelor of Science and Arts"
+      }
+  },
+  "expirationDate": "2038-01-19T03:14:00Z",
+  "id": "http://example.edu/credentials/1872",
+  "issuanceDate": "2010-01-01T19:23:24Z",
+  "issuer": {
+    "id": "did:example:76e12ec712ebc6f1c221ebfeb1f",
+    "name": "Example University"
+  },
+  "referenceNumber": 83294847,
+  "type": [
+    "VerifiableCredential",
+    "UniversityDegreeCredential"
+  ]
+}

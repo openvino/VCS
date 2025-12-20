@@ -1,0 +1,182 @@
+#
+# Copyright Avast Software. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+name: "wallet-sdk release"
+
+env:
+  GO_VERSION: '1.23'
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  PublishAndroidSDKRelease:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - name: Build Custom GO
+        run: |
+          cd ..
+          git clone https://go.googlesource.com/go goroot
+          cd goroot
+          git checkout go1.23.4
+          cp ../wallet-sdk/cmd/wallet-sdk-gomobile/gopatches/* ./
+          git revert 3560cf0afb3c29300a6c88ccd98256949ca7a6f6
+          cd src && ./make.bash
+      - name: Derive the new version
+        run: |
+          echo "new version"
+          NEW_VER=$(git describe --tags --always `git rev-list --tags --max-count=1`)
+          echo $NEW_VER
+      - name: Generate Binding
+        run: |
+          echo $PATH
+          echo ${{ github.workspace }}
+          echo ${GOPATH}
+          echo ${GOROOT}
+          export PATH=$GOPATH/bin:$PATH
+          echo $PATH
+          which go
+          go install golang.org/x/mobile/cmd/gomobile@latest
+          gomobile init
+          NEW_VERSION=$NEW_VER GIT_REV=$(git rev-parse HEAD) BUILD_TIME=$(date) make generate-android-bindings
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GOPATH: /Users/runner/work/wallet-sdk/goroot
+      - name: Upload Android bindings to GitHub Actions Artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-binding
+          path: ./cmd/wallet-sdk-gomobile/bindings/android
+      - name: Publish
+        run: |
+          export USER=$USER
+          export TOKEN=$TOKEN
+          export ANDROID_GROUP_ID=dev.trustbloc
+          export ANDROID_ARTIFACT_ID=vc-wallet-sdk
+          TAG=$(git describe --tags --always `git rev-list --tags --max-count=1`)
+          export ANDROID_VERSION=$TAG
+          export PROJECT_PKG_REPO=https://maven.pkg.github.com/trustbloc/wallet-sdk
+          echo $ANDROID_VERSION
+          gradle publish
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          USER: ${{ secrets.CR_USER }}
+          TOKEN: ${{ secrets.CR_PAT }}
+
+  PublishIosSDKRelease:
+    needs: [ PublishAndroidSDKRelease ]
+    runs-on: macos-latest
+    timeout-minutes: 40
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - name: Build Custom GO
+        run: |
+          cd ..
+          git clone https://go.googlesource.com/go goroot
+          cd goroot
+          git checkout go1.23.4
+          cp ../wallet-sdk/cmd/wallet-sdk-gomobile/gopatches/* ./
+          git revert 3560cf0afb3c29300a6c88ccd98256949ca7a6f6
+          cd src && ./make.bash
+      - name: Derive the new version
+        run: |
+          echo "new version"
+          NEW_VER=$(git describe --tags --always `git rev-list --tags --max-count=1`)
+          echo "NEW_VERSION=$NEW_VER-swift-pm" >> $GITHUB_ENV
+          echo $NEW_VER
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+      - name: Generate Binding
+        run: |
+          echo $PATH
+          echo ${{ github.workspace }}
+          echo ${GOPATH}
+          echo ${GOROOT}
+          export PATH=$GOPATH/bin:$PATH
+          echo $PATH
+          which go
+          go install golang.org/x/mobile/cmd/gomobile@latest
+          gomobile init
+          NEW_VERSION=$NEW_VER GIT_REV=$(git rev-parse HEAD) BUILD_TIME=$(date) make generate-ios-bindings
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GOPATH: /Users/runner/work/wallet-sdk/goroot
+      - name: Upload iOS bindings to GitHub Actions Artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios-binding
+          path: ./cmd/wallet-sdk-gomobile/bindings/ios
+      - name: Zip walletsdk framework
+        run: |
+          cd ./cmd/wallet-sdk-gomobile/bindings/ios
+          zip -r -X walletsdk.xcframework.zip walletsdk.xcframework
+      - name: Clone walletsdk release repository
+        uses: actions/checkout@v4
+        with:
+          repository: trustbloc/wallet-sdk
+          ref: swift-pm
+          path: ios
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and commit walletsdk xcframework package
+        run: |
+          cp -r ./cmd/wallet-sdk-gomobile/bindings/ios/walletsdk.xcframework.zip ./ios/walletsdk.xcframework.zip
+          cd ios/
+          ls -lrt
+          echo "calculate new checksum"
+          NEW_CHECKSUM=$(swift package compute-checksum $FRAMEWORK_NAME.xcframework.zip)
+          echo "moduleName=$FRAMEWORK_NAME version=$NEW_VERSION checksum=$NEW_CHECKSUM"
+          echo "replace name module information in package manifest"
+          sed -E -i '' 's/let moduleName = ".+"/let moduleName = "'$FRAMEWORK_NAME\"/ Package.swift
+          echo "replace version information in package manifest"
+          sed -E -i '' 's/let version = ".+"/let version = "'$NEW_VERSION\"/ Package.swift
+          echo "replace checksum information in package manifest"
+          sed -E -i '' 's/let checksum = ".+"/let checksum = "'$NEW_CHECKSUM\"/ Package.swift
+          echo "Package.swift content file after update"
+          cat Package.swift
+          echo "git commit all without framework and push"
+          git status
+          git add Package.swift
+          git commit -m "New $FRAMEWORK_NAME version $NEW_VERSION"
+          git push
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FRAMEWORK_NAME: walletsdk
+          NEW_VERSION: '${{ env.NEW_VERSION }}'
+      - name: Tag and Release new version Swift package
+        uses: softprops/action-gh-release@v1
+        with:
+          draft: false
+          tag_name : ${{ env.NEW_VERSION }}
+          repository : trustbloc/wallet-sdk
+          target_commitish : swift-pm
+          files: |
+            ios/walletsdk.xcframework.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

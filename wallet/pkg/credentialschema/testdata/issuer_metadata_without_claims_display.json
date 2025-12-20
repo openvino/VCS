@@ -1,0 +1,47 @@
+{
+  "credential_issuer": "https://server.example.com",
+  "authorization_server": "https://server.example.com/oidc/authorize",
+  "credential_endpoint": "https://server.example.com/oidc/credential",
+  "display": [
+    {
+      "locale": "en-US",
+      "name": "Example University"
+    },
+    {
+      "name": "サンプル大学",
+      "locale": "jp-JA"
+    }
+  ],
+  "credential_configurations_supported": {
+    "UniversityDegreeCredential_jwt_vc_json_v1": {
+      "format": "jwt_vc_json",
+      "credential_definition": {
+        "credentialSubject": {
+          "id": {}
+        },
+        "type": [
+          "VerifiableCredential",
+          "UniversityDegreeCredential"
+        ]
+      },
+      "cryptographic_binding_methods_supported": [
+        "ion"
+      ],
+      "credential_signing_alg_values_supported": [
+        "ECDSASecp256k1DER"
+      ],
+      "display": [
+        {
+          "name": "University Credential",
+          "locale": "en-US",
+          "logo": {
+            "uri": "https://exampleuniversity.com/public/logo.png",
+            "alt_text": "a square logo of a university"
+          },
+          "background_color": "#12107c",
+          "text_color": "#FFFFFF"
+        }
+      ]
+    }
+  }
+}

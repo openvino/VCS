@@ -1,0 +1,89 @@
+{
+  "id": "test_issuer",
+  "name": "test_issuer",
+  "version": "1.1",
+  "organizationID": "test_org",
+  "url": "https://issuer.example.com",
+  "active": true,
+  "signingDID": {
+    "did" : "did:orb:anything"
+  },
+  "vcConfig": {
+    "signingAlgorithm": "JsonWebSignature2020",
+    "signatureRepresentation": 0,
+    "keyType": "ECDSASecp256k1DER",
+    "format": "ldp",
+    "didMethod": "orb"
+  },
+  "oidcConfig": {
+    "client_id": "test_issuer_client_id",
+    "client_secret_handle": "test_issuer_client_secret_handle",
+    "issuer_well_known": "https://issuer.example.com/.well-known/openid-configuration",
+    "scopes_supported": [
+      "openid",
+      "profile"
+    ],
+    "grant_types_supported": [
+      "authorization_code",
+      "urn:ietf:params:oauth:grant-type:pre-authorized_code"
+    ]
+  },
+  "credentialTemplates": [
+    {
+      "contexts": [
+        "https://www.w3.org/2018/credentials/v1",
+        "https://w3id.org/citizenship/v1"
+      ],
+      "type": "PermanentResidentCard",
+      "id": "templateID",
+      "issuer": "test_issuer",
+      "jsonSchema": "{\"$id\":\"https://trustbloc.com/universitydegree.schema.json\",\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"title\":\"UniversityDegreeCredential\",\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"spouse\":{\"type\":\"string\"},\"degree\":{\"type\":\"object\",\"description\":\"Describes the degree.\",\"properties\":{\"type\":{\"type\":\"string\"},\"degree\":{\"type\":\"string\"}},\"required\":[\"type\",\"degree\"]}},\"required\":[\"name\",\"spouse\",\"degree\"]}",
+      "jsonSchemaID": "https://trustbloc.com/universitydegree.schema.json"
+    },
+    {
+      "contexts": [
+        "https://www.w3.org/2018/credentials/v1",
+        "https://w3id.org/citizenship/v1"
+      ],
+      "type": "UniversityDegreeCredential",
+      "id": "templateID2",
+      "issuer": "test_issuer",
+      "jsonSchema": "{\"$id\":\"https://trustbloc.com/universitydegree.schema.json\",\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"title\":\"UniversityDegreeCredential\",\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"spouse\":{\"type\":\"string\"},\"degree\":{\"type\":\"object\",\"description\":\"Describes the degree.\",\"properties\":{\"type\":{\"type\":\"string\"},\"degree\":{\"type\":\"string\"}},\"required\":[\"type\",\"degree\"]}},\"required\":[\"name\",\"spouse\",\"degree\"]}",
+      "jsonSchemaID": "https://trustbloc.com/universitydegree.schema.json"
+    },
+    {
+      "contexts": [
+        "https://www.w3.org/2018/credentials/v1",
+        "https://w3c-ccg.github.io/lds-jws2020/contexts/lds-jws2020-v1.json",
+        "https://www.w3.org/2018/credentials/examples/v1",
+        "https://w3id.org/vc/status-list/2021/v1"
+      ],
+      "type": "CrudeProductCredential",
+      "id": "templateID3",
+      "issuer": "test_issuer"
+    }
+  ],
+  "credentialMetadata": {
+    "display": [],
+    "credential_configurations_supported": {
+      "PermanentResidentCardIdentifier": {
+        "format": "jwt_vc_json",
+        "credential_definition": {
+          "type": [
+            "VerifiableCredential",
+            "PermanentResidentCard"
+          ]
+        }
+      },
+      "UniversityDegreeCredentialIdentifier": {
+        "format": "jwt_vc_json",
+        "credential_definition": {
+          "type": [
+            "VerifiableCredential",
+            "UniversityDegreeCredential"
+          ]
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "Manatoko" : {
+ "issuerURI": "https://yankee.openvino.org/vc/bank_issuer/v1.0",
+   "scopes": ["openid","profile"],
+   "clientID": "oidc4vc_client",
+   "redirectURI": "trustbloc-wallet://openid4vci/authcodeflow/callback",
+   "showIssuer": true,
+   "description": "Demo Issuer to issue demo credentials (e.g. PR card, etc)",
+   "logo": "lib/assets/images/logoIcon.png",
+   "backgroundColor": "#fcca40",
+   "textColor": "#000000"
+  }
+}

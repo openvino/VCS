@@ -1,0 +1,70 @@
+{
+  "issuer_display":{
+    "name":"DID Ion Issuer",
+    "locale":"en-US"
+  },
+  "credential_displays":[
+    {
+      "overview":{
+        "name":"Verified Employee",
+        "locale":"en-US",
+        "logo":{
+          "uri":"https://example.com/public/logo.png",
+          "alt_text":"a square logo of an employee verification"
+        },
+        "background_color":"#12107c",
+        "text_color":"#FFFFFF"
+      },
+      "claims":[
+        {
+          "raw_id": "displayName",
+          "label":"Employee",
+          "value_type": "string",
+          "raw_value":"John Doe",
+          "locale":"en-US"
+        },
+        {
+          "raw_id": "givenName",
+          "label":"Given Name",
+          "value_type": "string",
+          "raw_value":"John",
+          "locale":"en-US"
+        },
+        {
+          "raw_id": "jobTitle",
+          "label":"Job Title",
+          "value_type": "string",
+          "raw_value":"Software Developer",
+          "locale":"en-US"
+        },
+        {
+          "raw_id": "mail",
+          "label":"Mail",
+          "value_type": "string",
+          "raw_value":"john.doe@foo.bar",
+          "locale":"en-US"
+        },
+        {
+          "raw_id": "photo",
+          "label":"Photo",
+          "value_type": "image",
+          "raw_value":"data-URL-encoded image"
+        },
+        {
+          "raw_id": "preferredLanguage",
+          "label":"Preferred Language",
+          "value_type": "string",
+          "raw_value":"English",
+          "locale":"en-US"
+        },
+        {
+          "raw_id": "surname",
+          "label":"Surname",
+          "value_type": "string",
+          "raw_value":"Doe",
+          "locale":"en-US"
+        }
+      ]
+    }
+  ]
+}

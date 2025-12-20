@@ -1,0 +1,104 @@
+{
+  "authorization_server": "https://yankee.openvino.org/admin/oidc/authorize",
+  "credential_endpoint": "https://yankee.openvino.org/admin/oidc/credential",
+  "display": [
+    {
+      "locale": "en-US",
+      "name": "Bank Issuer"
+    }
+  ],
+  "credential_configurations_supported": {
+    "VerifiedEmployee_jwt_vc_json_v1": {
+      "format": "jwt_vc_json",
+      "credential_definition": {
+        "credentialSubject": {
+          "displayName": {
+            "display": [
+              {
+                "locale": "en-US",
+                "name": "Employee"
+              }
+            ],
+            "value_type": "string"
+          },
+          "givenName": {
+            "display": [
+              {
+                "locale": "en-US",
+                "name": "Given Name"
+              }
+            ],
+            "value_type": "string"
+          },
+          "jobTitle": {
+            "display": [
+              {
+                "locale": "en-US",
+                "name": "Job Title"
+              }
+            ],
+            "value_type": "string"
+          },
+          "mail": {
+            "display": [
+              {
+                "locale": "en-US",
+                "name": "Mail"
+              }
+            ],
+            "value_type": "string"
+          },
+          "photo": {
+            "display": [
+              {
+                "name": "Photo"
+              }
+            ],
+            "value_type": "image"
+          },
+          "preferredLanguage": {
+            "display": [
+              {
+                "locale": "en-US",
+                "name": "Preferred Language"
+              }
+            ],
+            "value_type": "string"
+          },
+          "surname": {
+            "display": [
+              {
+                "locale": "en-US",
+                "name": "Surname"
+              }
+            ],
+            "value_type": "string"
+          }
+        },
+        "type": [
+          "VerifiableCredential",
+          "VerifiedEmployee"
+        ]
+      },
+      "cryptographic_binding_methods_supported": [
+        "orb"
+      ],
+      "credential_signing_alg_values_supported": [
+        "ECDSASecp256k1DER"
+      ],
+      "display": [
+        {
+          "background_color": "#12107c",
+          "locale": "en-US",
+          "logo": {
+            "alt_text": "a square logo of an employee verification",
+            "uri": "https://example.com/public/logo.png"
+          },
+          "name": "Verified Employee",
+          "text_color": "#FFFFFF"
+        }
+      ]
+    }
+  },
+  "credential_issuer": "https://yankee.openvino.org/admin/bank_issuer_jwtsd"
+}

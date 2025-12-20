@@ -1,0 +1,15 @@
+{
+  "didResolverURI": "https://yankee.openvino.org/resolver",
+  "evaluateIssuanceURL": "https://yankee.openvino.org/registry/wallet/interactions/issuance",
+  "evaluatePresentationURL": "https://yankee.openvino.org/registry/wallet/interactions/presentation",
+  "attestationURL": "https://yankee.openvino.org/login/profiles/profileID/profileVersion/wallet/attestation/",
+  "attestationPayload": {
+    "type": "urn:attestation:application:trustbloc",
+    "application": {
+      "type": "TrustblocWallet",
+      "name": "Trustbloc Wallet",
+      "version": "2.0"
+    },
+    "compliance": [{ "type": "fcra" }]
+  }
+}

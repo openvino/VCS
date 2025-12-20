@@ -1,0 +1,15 @@
+{
+  "originHash" : "24a3d241a48aa5ecfb5ddec2428401d42767c069b82ded8c3e48769fe32b7701",
+  "pins" : [
+    {
+      "identity" : "wallet-sdk",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/trustbloc-cicd/wallet-sdk",
+      "state" : {
+        "branch" : "main",
+        "revision" : "137e6d2226dd9b8072794949b1c60c68af0aeb7c"
+      }
+    }
+  ],
+  "version" : 3
+}

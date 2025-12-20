@@ -1,0 +1,106 @@
+#
+# Copyright Avast Software. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+run:
+  concurrency: 4
+  timeout: 3m
+  issues-exit-code: 1
+  tests: true
+  build-tags: [""]
+
+output:
+  formats:
+    - format: colored-line-number
+  print-issued-lines: true
+  print-linter-name: true
+
+linters-settings:
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
+    exclude-functions:
+      - fmt:.*
+      - io/ioutil:^Read.*
+  govet:
+    enable:
+      - shadow
+  gofmt:
+    simplify: true
+  goimports:
+    local-prefixes: github.com/trustbloc/agent-sdk
+  gocyclo:
+    min-complexity: 10
+  dupl:
+    threshold: 100
+  goconst:
+    min-len: 3
+    min-occurrences: 3
+  misspell:
+    # default locale is a neutral variety of English.
+    locale:
+    ignore-words: []
+  lll:
+    line-length: 120
+    tab-width: 1
+  unparam:
+    check-exported: false
+  nakedret:
+    max-func-lines: 0
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - performance
+      - style
+      - opinionated
+    disabled-checks:
+      - unnamedResult
+      - whyNoLint # TODO enable https://github.com/trustbloc/agent-sdk/issues/12
+  funlen:
+    lines: 60
+    statements: 40
+  gomoddirectives:
+    replace-local: true
+    replace-allow-list:
+      - github.com/piprate/json-gold
+      - github.com/xeipuuv/gojsonschema
+
+linters:
+  enable-all: true
+  disable:
+    - prealloc
+    - err113 # not good: https://github.com/Djarvur/go-err113/issues/10
+    - paralleltest
+#    - tparallel
+    - cyclop # TODO consider replacing gocyclo with cyclop
+    - wrapcheck # TODO enable
+    - forbidigo # TODO enable
+    - gci # giving spurious errors for imports of syscall/js
+    - exhaustruct # Results in unneeded struct member declarations
+    - ireturn # Required by aries-framework-go, a library we use
+    - tagliatelle # JSON tags using camel-case required by the specs we implement
+    - varnamelen # This linter prevents us from using "i" as an index variable or "vc" for a variable name for a Verifiable Credential, both of which are very common in our code
+    - depguard # TODO consider enabling in the future
+    - exportloopref
+    - revive
+    - perfsprint
+    - thelper
+
+issues:
+  exclude-use-default: false
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - dupl
+        - funlen
+        - maintidx
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+  exclude:
+    # Allow package logger variables (for now)
+    - \`logger\` is a global variable
+    - logger is a global variable
+    -  Line contains TODO/BUG/FIXME

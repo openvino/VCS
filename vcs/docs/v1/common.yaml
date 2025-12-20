@@ -1,0 +1,190 @@
+#
+# Copyright SecureKey Technologies Inc. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+openapi: 3.0.0
+info:
+  title: Common types for Verifiable Credential Service (VCS)
+  version: 0.2.0
+  description: TrustBloc VCS support credential issuance and verification using W3C VC-API along with OpenID4VC protocol for issuer/verifer interaction with Wallet.
+  license:
+    name: Apache-2.0
+    url: 'https://www.apache.org/licenses/LICENSE-2.0.txt'
+components:
+  schemas:
+    KMSConfig:
+      title: KMSConfig
+      x-tags:
+        - issuer
+      type: object
+      description: Model for KMS configuration.
+      properties:
+        type:
+          type: string
+          description: Type of kms used to create and store DID keys.
+          enum:
+            - local
+            - web
+            - aws
+        endpoint:
+          type: string
+          description: KMS endpoint.
+        secretLockKeyPath:
+          type: string
+          description: Path to secret lock used by local kms.
+        dbType:
+          type: string
+          description: Type of database used by local kms.
+        dbURL:
+          type: string
+          description: URL to database used by local kms.
+        dbPrefix:
+          type: string
+          description: Prefix of database used by local kms.
+      required:
+        - type
+    VCFormat:
+      title: VCFormat
+      type: string
+      enum:
+        - jwt_vc_json-ld
+        - cwt_vc-ld
+        - jwt_vc_json
+        - ldp_vc
+      description: Supported VC formats.
+    VPFormat:
+      title: VPFormat
+      type: string
+      enum:
+        - jwt_vp
+        - ldp_vp
+        - cwt_vp
+      description: Supported VP formats.
+    DIDMethod:
+      type: string
+      description: DID method of the DID to be used for signing.
+      enum:
+        - orb
+        - web
+        - key
+    WalletInitiatedFlowData:
+      title: WalletInitiatedFlowData
+      type: object
+      nullable: true
+      properties:
+        profile_id:
+          type: string
+        profile_version:
+          type: string
+        op_state:
+          type: string
+        scopes:
+          type: array
+          nullable: true
+          items:
+            type: string
+        claim_endpoint:
+          type: string
+        credential_template_id:
+          type: string
+      required:
+        - profile_id
+        - profile_version
+        - scopes
+        - claim_endpoint
+        - credential_template_id
+        - op_state
+    AuthorizationDetails:
+      title: AuthorizationDetails
+      type: object
+      description: Model to convey the details about the Credentials the Client wants to obtain.
+      properties:
+        type:
+          type: string
+          description: String that determines the authorization details type. MUST be set to "openid_credential" for OIDC4VC.
+        format:
+          type: string
+          description: REQUIRED when CredentialConfigurationId parameter is not present. String identifying the format of the Credential the Wallet needs. This Credential format identifier determines further claims in the authorization details object needed to identify the Credential type in the requested format. It MUST NOT be present if credential_configuration_id parameter is present.
+        credential_configuration_id:
+          type: string
+          description: REQUIRED when Format parameter is not present. String specifying a unique identifier of the Credential being described in the credential_configurations_supported map in the Credential Issuer Metadata. The referenced object in the credential_configurations_supported map conveys the details, such as the format, for issuance of the requested Credential. It MUST NOT be present if format parameter is present.
+        credential_definition:
+          $ref: '#/components/schemas/CredentialDefinition'
+        locations:
+          description: An array of strings that allows a client to specify the location of the resource server(s) allowing the Authorization Server to mint audience restricted access tokens.
+          type: array
+          items:
+            type: string
+        credential_identifiers:
+          description: For Token response only. Array of strings, each uniquely identifying a Credential that can be issued using the Access Token returned in this response. Each of these Credentials corresponds to the same entry in the credential_configurations_supported Credential Issuer metadata but can contain different claim values or a different subset of claims within the claims set identified by that Credential type.
+          type: array
+          items:
+            type: string
+      required:
+        - type
+    CredentialDefinition:
+      title: CredentialDefinition object definition.
+      type: object
+      description: Object containing the detailed description of the credential type.
+      properties:
+        '@context':
+          type: array
+          items:
+            type: string
+          description: 'For ldp_vc only. Array as defined in https://www.w3.org/TR/vc-data-model/#contexts.'
+        type:
+          type: array
+          items:
+            type: string
+          description: Array designating the types a certain credential type supports
+        credentialSubject:
+          type: object
+          description: 'An object containing a list of name/value pairs, where each name identifies a claim offered in the Credential. The value can be another such object (nested data structures), or an array of such objects.'
+      required:
+        - type
+    CredentialResponseCredentialObject:
+      title: CredentialResponseCredentialObject
+      type: object
+      description: Model for credentials field from credential response.
+      properties:
+        credential:
+          x-go-type: any
+          oneOf:
+            - type: string
+            - type: object
+      required:
+        - credential
+    PrivateAPIErrorResponse:
+      title: PrivateAPIErrorResponse
+      type: object
+      description: Model for private API error response.
+      properties:
+        error:
+          type: string
+          description: Error code.
+        component:
+          type: string
+        operation:
+          type: string
+        incorrect_value:
+          type: string
+        http_status:
+          type: integer
+        error_description:
+          type: string
+      required:
+        - error
+    PublicAPIErrorResponse:
+      title: PublicAPIErrorResponse
+      type: object
+      description: Model for public API error response.
+      properties:
+        error:
+          type: string
+          description: Error code.
+        error_description:
+          type: string
+      required:
+        - error

@@ -1,0 +1,107 @@
+{
+  "authorization_endpoint": "[SERVER_URL]/oidc/authorize",
+  "notification_endpoint": "[SERVER_URL]/oidc/ack_endpoint",
+  "credential_configurations_supported": {
+    "PermanentResidentCard_jwt_vc_json-ld_v1": {
+      "credential_definition": {
+        "@context": [
+          "http://localhost:4566/doc-store/df7cf304-fdd0-41d3-bbce-01681691c258/v1.0"
+        ],
+        "credentialSubject": {
+          "last_name": {
+            "mandatory": false,
+            "value_type": "string",
+            "display": [
+              {
+                "name": "some-text",
+                "locale": "en-US"
+              }
+            ]
+          }
+        },
+        "type": [
+          "VerifiableCredential",
+          "PermanentResidentCard"
+        ]
+      },
+      "display": [
+        {
+          "name": "University Credential",
+          "locale": "en-US",
+          "logo": {
+            "uri": "https://exampleuniversity.com/public/degree_logo.png",
+            "alt_text": "a square logo of an Example University degree"
+          },
+          "background_color": "#12107c",
+          "text_color": "#FFFFFF"
+        }
+      ],
+      "format": "jwt_vc_json-ld",
+      "scope": "JSONLD_schema_scope1",
+      "order": [
+        "last_name"
+      ],
+      "cryptographic_binding_methods_supported": [
+        "web"
+      ],
+      "credential_signing_alg_values_supported": [
+        "ECDSAP256DER"
+      ],
+      "proof_types_supported": {
+        "jwt": {
+          "proof_signing_alg_values_supported": [
+            "ECDSAP256DER"
+          ]
+        }
+      }
+    }
+  },
+  "credential_endpoint": "[SERVER_URL]/oidc/credential",
+  "credential_issuer": "[SERVER_URL]",
+  "credential_response_encryption": {
+    "alg_values_supported": [
+      "RSA1_5",
+      "RSA-OAEP",
+      "RSA-OAEP-256"
+    ],
+    "enc_values_supported": [
+      "A128CBC-HS256",
+      "A192CBC-HS384",
+      "A256CBC-HS512"
+    ],
+    "encryption_required": false
+  },
+  "display": [
+    {
+      "locale": "en-US",
+      "name": "Example University",
+      "url": "https://server.example.com",
+      "logo": {
+        "uri": "https://exampleuniversity.com/public/logo.png",
+        "alt_text": "a square logo of a university"
+      },
+      "background_color": "#12107c",
+      "text_color": "#FFFFFF"
+    },
+    {
+      "name": "サンプル大学",
+      "locale": "jp-JA",
+      "url": "https://server.example.com",
+      "background_color": "#12107c",
+      "text_color": "#FFFFFF"
+    }
+  ],
+  "pre-authorized_grant_anonymous_access_supported": true,
+  "registration_endpoint": "[SERVER_URL]/oidc/bank_issuer/v1.0/register",
+  "response_types_supported": [
+    "code"
+  ],
+  "token_endpoint": "[SERVER_URL]/oidc/token",
+  "token_endpoint_auth_methods_supported": [
+    "client_secret_basic",
+    "client_secret_post",
+    "attest_jwt_client_auth",
+    "none"
+  ]
+}
+

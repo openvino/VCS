@@ -1,0 +1,477 @@
+{
+  "profile": [
+    {
+      "endpoint": "/issuer/profiles/{profileID}/{profileVersion}/credentials/issue",
+      "method": "POST",
+      "protected": true,
+      "roles_to_validate": [
+        "issuer"
+      ],
+      "input_headers": [
+        "X-Tenant-ID",
+        "Content-Type"
+      ]
+    },
+    {
+      "endpoint": "/issuer/credentials/status",
+      "method": "POST",
+      "protected": true,
+      "propagate_roles_header": true,
+      "roles_to_validate": [
+        "revoker",
+        "activator"
+      ],
+      "input_headers": [
+        "X-Tenant-ID",
+        "X-Client-Roles",
+        "Content-Type"
+      ]
+    },
+    {
+      "endpoint": "/issuer/profiles/{profileID}/{profileVersion}/interactions/refresh",
+      "method": "POST",
+      "protected": true,
+      "roles_to_validate": [
+        "issuer"
+      ],
+      "input_headers": [
+        "X-Tenant-ID",
+        "Content-Type"
+      ]
+    },
+    {
+      "endpoint": "/issuer/profiles/{profileID}/{profileVersion}/interactions/initiate-oidc",
+      "method": "POST",
+      "protected": true,
+      "roles_to_validate": [
+        "issuer"
+      ],
+      "input_headers": [
+        "X-Tenant-ID",
+        "Content-Type"
+      ]
+    },
+    {
+      "endpoint": "/issuer/profiles/{profileID}/{profileVersion}/interactions/compose-and-initiate-issuance",
+      "method": "POST",
+      "protected": true,
+      "roles_to_validate": [
+        "issuer"
+      ],
+      "input_headers": [
+        "X-Tenant-ID",
+        "Content-Type"
+      ]
+    },
+    {
+      "endpoint": "/refresh/{profileID}/{profileVersion}",
+      "method": "GET",
+      "input_query_strings": [
+        "credentialID"
+      ],
+      "input_headers": [
+        "X-Correlation-ID"
+      ]
+    },
+    {
+      "endpoint": "/refresh/{profileID}/{profileVersion}",
+      "method": "POST",
+      "input_query_strings": [
+        "credentialID"
+      ],
+      "input_headers": [
+        "Content-Type",
+        "X-Correlation-ID"
+      ]
+    },
+    {
+      "endpoint": "/oidc/authorize",
+      "method": "GET",
+      "input_query_strings": [
+        "*"
+      ],
+      "backend_extra_config": {
+        "plugin/http-client": {
+          "name": "http-client-no-redirect"
+        }
+      }
+    },
+    {
+      "endpoint": "/issuer/profiles/{profileID}/issued-credentials",
+      "method": "GET",
+      "input_query_strings": [
+        "*"
+      ],
+      "backend_extra_config": {
+        "plugin/http-client": {
+          "name": "http-client-no-redirect"
+        }
+      }
+    },
+    {
+      "endpoint": "/issuer/{profileID}/{profileVersion}/.well-known/openid-credential-issuer",
+      "method": "GET",
+      "input_query_strings": [
+        "*"
+      ],
+      "backend_extra_config": {
+        "plugin/http-client": {
+          "name": "http-client-no-redirect"
+        }
+      }
+    },
+    {
+      "endpoint": "/oidc/idp/{profileID}/{profileVersion}/.well-known/openid-credential-issuer",
+      "method": "GET",
+      "input_query_strings": [
+        "*"
+      ],
+      "input_headers": [
+        "X-Correlation-ID"
+      ],
+      "backend_extra_config": {
+        "plugin/http-client": {
+          "name": "http-client-no-redirect"
+        }
+      }
+    },
+    {
+      "endpoint": "/oidc/{profileID}/{profileVersion}/register",
+      "method": "POST",
+      "input_headers": [
+        "Content-Type",
+        "X-Correlation-ID"
+      ]
+    },
+    {
+      "endpoint": "/oidc/par",
+      "method": "POST"
+    },
+    {
+      "endpoint": "/oidc/redirect",
+      "method": "GET",
+      "input_query_strings": [
+        "*"
+      ],
+      "backend_extra_config": {
+        "plugin/http-client": {
+          "name": "http-client-no-redirect"
+        }
+      }
+    },
+    {
+      "endpoint": "/oidc/token",
+      "method": "POST",
+      "input_headers": [
+        "Authorization",
+        "Content-Type",
+        "X-Correlation-ID"
+      ]
+    },
+    {
+      "endpoint": "/oidc/present",
+      "method": "POST",
+      "input_headers": [
+        "Authorization",
+        "Content-Type",
+        "X-Correlation-ID"
+      ]
+    },
+    {
+      "endpoint": "/oidc/credential",
+      "method": "POST",
+      "input_headers": [
+        "Authorization",
+        "Content-Type",
+        "X-Correlation-ID"
+      ]
+    },
+    {
+      "endpoint": "/oidc/batch_credential",
+      "method": "POST",
+      "input_headers": [
+        "Authorization",
+        "Content-Type",
+        "X-Correlation-ID"
+      ]
+    },
+    {
+      "endpoint": "/oidc/notification",
+      "method": "POST",
+      "input_headers": [
+        "Authorization",
+        "Content-Type",
+        "X-Correlation-ID"
+      ]
+    },
+    {
+      "endpoint": "/verifier/profiles/{profileID}/{profileVersion}/credentials/verify",
+      "method": "POST",
+      "protected": true,
+      "roles_to_validate": [
+        "verifier"
+      ],
+      "input_headers": [
+        "X-Tenant-ID",
+        "Content-Type"
+      ]
+    },
+    {
+      "endpoint": "/verifier/profiles/{profileID}/{profileVersion}/presentations/verify",
+      "method": "POST",
+      "protected": true,
+      "roles_to_validate": [
+        "verifier"
+      ],
+      "input_headers": [
+        "X-Tenant-ID",
+        "Content-Type"
+      ]
+    },
+    {
+      "endpoint": "/verifier/profiles/{profileID}/{profileVersion}/interactions/initiate-oidc",
+      "method": "POST",
+      "protected": true,
+      "roles_to_validate": [
+        "verifier"
+      ],
+      "input_headers": [
+        "X-Tenant-ID",
+        "Content-Type"
+      ]
+    },
+    {
+      "endpoint": "/verifier/interactions/{txID}/claim",
+      "method": "GET",
+      "protected": true,
+      "roles_to_validate": [
+        "verifier"
+      ],
+      "input_headers": [
+        "X-Tenant-ID",
+        "Content-Type"
+      ]
+    },
+    {
+      "endpoint": "/verifier/interactions/authorization-response",
+      "method": "POST",
+      "roles_to_validate": [
+        "verifier"
+      ],
+      "input_headers": [
+        "Content-Type"
+      ]
+    },
+    {
+      "endpoint": "/request-object/{uuid}",
+      "method": "GET",
+      "input_headers": [
+        "X-Correlation-ID"
+      ]
+    },
+    {
+      "endpoint": "/version",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/version/system",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/issuer/profiles/ecdsa-test-suite-issuer/v1.0/credentials/issue",
+      "method": "POST",
+      "protected": false,
+      "backend_extra_config": {
+        "modifier/martian": {
+          "fifo.Group" : {
+            "scope": [
+              "request"
+            ],
+            "aggregateErrors": true,
+            "modifiers": [
+              {
+                "header.Modifier": {
+                  "scope": [
+                    "request"
+                  ],
+                  "name": "X-API-Key",
+                  "value": "rw_token"
+                }
+              },
+              {
+                "header.Modifier": {
+                  "scope": [
+                    "request"
+                  ],
+                  "name": "X-Tenant-ID",
+                  "value": "00000000-0000-0000-0000-000000000001"
+                }
+              }
+            ]
+          }
+        },
+        "input_headers": [
+          "X-Tenant-ID",
+          "Content-Type"
+        ]
+      }
+    },
+    {
+      "endpoint": "/verifier/profiles/ecdsa-test-suite-verifier/v1.0/credentials/verify",
+      "method": "POST",
+      "protected": false,
+      "backend_extra_config": {
+        "modifier/martian": {
+          "fifo.Group" : {
+            "scope": [
+              "request"
+            ],
+            "aggregateErrors": true,
+            "modifiers": [
+              {
+                "header.Modifier": {
+                  "scope": [
+                    "request"
+                  ],
+                  "name": "X-API-Key",
+                  "value": "rw_token"
+                }
+              },
+              {
+                "header.Modifier": {
+                  "scope": [
+                    "request"
+                  ],
+                  "name": "X-Tenant-ID",
+                  "value": "00000000-0000-0000-0000-000000000001"
+                }
+              }
+            ]
+          }
+        },
+        "input_headers": [
+          "X-Tenant-ID",
+          "Content-Type"
+        ]
+      }
+    },
+
+    {
+      "endpoint": "/issuer/profiles/vc-data-model-test-suite-issuer/v1.0/credentials/issue",
+      "method": "POST",
+      "protected": false,
+      "backend_extra_config": {
+        "modifier/martian": {
+          "fifo.Group" : {
+            "scope": [
+              "request"
+            ],
+            "aggregateErrors": true,
+            "modifiers": [
+              {
+                "header.Modifier": {
+                  "scope": [
+                    "request"
+                  ],
+                  "name": "X-API-Key",
+                  "value": "rw_token"
+                }
+              },
+              {
+                "header.Modifier": {
+                  "scope": [
+                    "request"
+                  ],
+                  "name": "X-Tenant-ID",
+                  "value": "00000000-0000-0000-0000-000000000001"
+                }
+              }
+            ]
+          }
+        },
+        "input_headers": [
+          "X-Tenant-ID",
+          "Content-Type"
+        ]
+      }
+    },
+    {
+      "endpoint": "/verifier/profiles/vc-data-model-test-suite-verifier/v1.0/credentials/verify",
+      "method": "POST",
+      "protected": false,
+      "backend_extra_config": {
+        "modifier/martian": {
+          "fifo.Group" : {
+            "scope": [
+              "request"
+            ],
+            "aggregateErrors": true,
+            "modifiers": [
+              {
+                "header.Modifier": {
+                  "scope": [
+                    "request"
+                  ],
+                  "name": "X-API-Key",
+                  "value": "rw_token"
+                }
+              },
+              {
+                "header.Modifier": {
+                  "scope": [
+                    "request"
+                  ],
+                  "name": "X-Tenant-ID",
+                  "value": "00000000-0000-0000-0000-000000000001"
+                }
+              }
+            ]
+          }
+        },
+        "input_headers": [
+          "X-Tenant-ID",
+          "Content-Type"
+        ]
+      }
+    },
+    {
+      "endpoint": "/verifier/profiles/vc-data-model-test-suite-verifier/v1.0/presentations/verify",
+      "method": "POST",
+      "protected": false,
+      "backend_extra_config": {
+        "modifier/martian": {
+          "fifo.Group" : {
+            "scope": [
+              "request"
+            ],
+            "aggregateErrors": true,
+            "modifiers": [
+              {
+                "header.Modifier": {
+                  "scope": [
+                    "request"
+                  ],
+                  "name": "X-API-Key",
+                  "value": "rw_token"
+                }
+              },
+              {
+                "header.Modifier": {
+                  "scope": [
+                    "request"
+                  ],
+                  "name": "X-Tenant-ID",
+                  "value": "00000000-0000-0000-0000-000000000001"
+                }
+              }
+            ]
+          }
+        },
+        "input_headers": [
+          "X-Tenant-ID",
+          "Content-Type"
+        ]
+      }
+    }
+  ]
+}

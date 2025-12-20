@@ -1,0 +1,22 @@
+{
+	"@context": [
+		"https://www.w3.org/2018/credentials/v1",
+		"https://www.w3.org/2018/credentials/examples/v1"
+	],
+	"type": [
+		"VerifiableCredential",
+		"UniversityDegreeCredential"
+	],
+	"id": "http://example.gov/credentials/ff98f978-588f-4eb0-b17b-60c18e1dac2c",
+	"issuanceDate": "2020-05-11T22:04:22Z",
+	"issuer": "did:v1:test:nym:z6MkfqxbQu6ikzpZRM3GwaFiUzy5vDgbmt99MGLA38kZUnEB",
+	"credentialSubject": {
+		"id": "did:example:ebfeb1f712ebc6f1c276e12ec21",
+		"degree": {
+			"type": "BachelorDegree",
+			"degree": "MIT"
+		},
+		"name": "Jayden Doe",
+		"spouse": "did:example:c276e12ec21ebfeb1f712ebc6f1"
+	}
+}
