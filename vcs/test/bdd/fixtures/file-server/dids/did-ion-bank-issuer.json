@@ -1,0 +1,32 @@
+{
+  "@context": [
+    "https://www.w3.org/ns/did/v1"
+  ],
+  "id": "did:ion:bank_issuer",
+  "verificationMethod": [
+    {
+      "id": "did:ion:bank_issuer#key-id",
+      "type": "JsonWebKey2020",
+      "controller": "did:ion:bank_issuer",
+      "publicKeyJwk": {
+        "crv": "Ed25519",
+        "kid": "d1KyDTn6SrM5IWaDbB8anWtM2fIC6icfM29Pn89Z3MU",
+        "kty": "OKP",
+        "x": "O0L4344HMQdRaixYnC_AInG831ybqWO_tFC2kE436YM"
+      }
+    }
+  ],
+  "authentication": [
+    "did:ion:bank_issuer#key-id"
+  ],
+  "assertionMethod": [
+    "did:ion:bank_issuer#key-id"
+  ],
+  "service": [
+    {
+      "id": "did:ion:bank_issuer#linked-domain",
+      "type": "LinkedDomains",
+      "serviceEndpoint": "https://yankee.openvino.org/.well-known/did-configuration.json"
+    }
+  ]
+}
