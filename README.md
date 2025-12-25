@@ -46,6 +46,9 @@ Repository layout (relative to `/var/www/VCS/`):
 
 ## 2. Datastores (MongoDB & Redis)
 
+> **Note (yankee):** Minikube is legacy in this server and should be stopped/removed if still running.
+> It is not required for the VCS deployment described in this guide.
+
 You can either use the distro packages installed in step 0, or run them via Docker.
 
 ### MongoDB via Docker
@@ -199,33 +202,538 @@ curl -k https://yankee.openvino.org/resolver/1.0/identifiers/did:ion:bank_issuer
 
 Expected URL: `https://yankee.openvino.org/.well-known/did-configuration.json`.
 
-## 8. Supporting mock services
 
-### 7.1 Trust Registry
+## 8. Trust Registry (Node.js + PostgreSQL)
 
-```bash
-docker rm -f mock-trust-registry
-docker run -d --name mock-trust-registry \
-  -p 8100:8100 \
-  -e LISTEN_ADDR=:8100 \
-  -e RULES_FILE_PATH=/trust-registry/rules.json \
-  -e TLS_CERT_PATH=/etc/tls/server.crt \
-  -e TLS_KEY_PATH=/etc/tls/server.key \
-  -e ROOT_CA_CERTS_PATH=/etc/tls/trustbloc-dev.ca.crt \
-  -v /var/www/VCS/certs:/etc/tls \
-  -v /var/www/VCS/wallet/test/integration/fixtures/trust-registry:/trust-registry \
-  wallet-sdk/mock-trust-registry:latest
+The **Trust Registry** is a core supporting service used during **credential issuance and verification**
+to decide whether a given **issuer**, **verifier**, or **wallet interaction** is trusted.
+
+In practice, it answers questions such as:
+- Is this issuer allowed to issue credentials?
+- Is this verifier trusted to request presentations?
+- Are wallet ↔ issuer / wallet ↔ verifier interactions permitted?
+
+`vc-rest`, wallet flows, and some TrustBloc components consult the Trust Registry
+during issuance and presentation flows.
+
+---
+
+### 8.1 Architecture & Design
+
+On `yankee`, the Trust Registry is implemented as:
+
+- **Node.js (Fastify) service**
+- **PostgreSQL** as the persistence layer
+- **Docker Compose** for lifecycle management
+
+Why this setup:
+- Replaces the old **static JSON / mock Go registry**
+- Allows dynamic enable/disable of issuers and verifiers
+- Suitable for production usage
+- Can be managed by internal admin services later
+
+The service listens on **localhost only**:
+
+- `127.0.0.1:8100`
+- Not publicly exposed
+
+---
+
+### 8.2 Files & Paths (Source of Truth)
+
+Location in the repository:
+
+```
+/var/www/VCS/vcs/trust-registry/
+├── Dockerfile
+├── docker-compose.yml
+├── .env
+├── package.json
+├── src/
+│   ├── server.js        # HTTP API (Fastify)
+│   ├── migrate.js       # DB migrations runner
+│   └── ...
+└── sql/
+    └── schema.sql       # PostgreSQL schema
 ```
 
-Quick health check:
+Docker resources created:
+
+- Network: `trust-registry_trust_registry_net`
+- Volume:  `trust-registry_trust_registry_pg`
+- Containers:
+  - `trust-registry` (Node service)
+  - `trust-registry-db` (Postgres)
+  - `trust-registry-migrate` (one-shot migration job)
+
+---
+
+### 8.3 Environment variables
+
+Defined via Docker Compose:
+
+- `PORT=8100`
+- `HOST=0.0.0.0`
+- `ALLOW_ALL=true`  
+  > If `true`, the registry allows all checks (bootstrap / dev mode)
+
+- `PG_DSN=postgres://trust_registry:trust_registry@trust-registry-db:5432/trust_registry`
+
+Optional (recommended for future hardening):
+- `ADMIN_TOKEN=<secret>` – protect admin endpoints
+
+---
+
+### 8.4 Start / Stop the Trust Registry
+
+#### Start (build + run)
 
 ```bash
-curl -k https://127.0.0.1:8100/wallet/interactions/issuance \
-  -H 'Content-Type: application/json' \
-  --data @/var/www/VCS/wallet/test/integration/fixtures/trust-registry/issuance_request.json
+cd /var/www/VCS/vcs/trust-registry
+sudo docker compose up -d --build
 ```
+
+Verify:
+
+```bash
+sudo docker compose ps
+curl http://127.0.0.1:8100/healthz
+```
+
+Expected response:
+
+```json
+{ "ok": true }
+```
+
+---
+
+#### Stop (keep data)
+
+```bash
+cd /var/www/VCS/vcs/trust-registry
+sudo docker compose down
+```
+
+---
+
+#### Stop + remove data (FULL RESET)
+
+```bash
+cd /var/www/VCS/vcs/trust-registry
+sudo docker compose down -v
+```
+
+⚠️ This deletes the PostgreSQL volume and **all registry data**.
+
+---
+
+### 8.5 Ports & Security
+
+- Exposed only on: `127.0.0.1:8100`
+- No public access
+- Accessed internally by:
+  - `vc-rest`
+  - wallet-related flows
+  - future admin APIs
+
+Verify it is NOT public:
+
+```bash
+curl http://$(hostname -I | awk '{print $1}'):8100/healthz || echo "not public (OK)"
+```
+
+---
+
+### 8.6 Relationship with MongoDB & Redis
+
+The Trust Registry **does NOT use**:
+- MongoDB
+- Redis
+
+Those datastores are used by:
+- `vc-rest`
+- credential issuance state
+- caching, sessions, and profiles
+
+The Trust Registry is intentionally isolated and only depends on PostgreSQL.
+
+---
+
+### 8.7 Deprecated: Go-based Mock Trust Registry
+
+⚠️ **Deprecated on yankee**
+
+Previous deployments used:
+- `wallet-sdk/mock-trust-registry` (Go binary)
+- Static `rules.json`
+- systemd unit: `mock-trust-registry.service`
+
+This is now **disabled and masked**:
+
+```bash
+sudo systemctl disable --now mock-trust-registry.service
+sudo systemctl mask mock-trust-registry.service
+```
+
+Do **NOT** re-enable this service.
+The Node.js Trust Registry is the single source of truth.
+
+---
+
+### 8.8 Operational checklist
+
+Quick sanity checks:
+
+```bash
+# containers
+docker ps | grep trust-registry
+
+# health
+curl http://127.0.0.1:8100/healthz
+
+# port binding
+sudo ss -lntp | grep 8100
+```
+
+---
+
+### 8.9 When to restart
+
+Restart the Trust Registry if:
+- Database schema changes
+- Registry rules / data are modified
+- Environment variables change
+
+```bash
+cd /var/www/VCS/vcs/trust-registry
+sudo docker compose restart
+```
+
+---
+
+### 8.10 Summary
+
+- Trust Registry = **policy & trust decision service**
+- Node.js + PostgreSQL
+- Local-only, dockerized
+- Required for issuance & verification flows
+- Replaces legacy Go mock registry
+
+### 7.2 Keycloak (real OAuth) + Cognito Auth Adapter (PROD on yankee)
+
+On **yankee**, the default OAuth/token provider for the stack is now **Keycloak** (real IdP) plus a small compatibility layer called **cognito-auth-adapter**.
+
+Why this exists:
+- Some components/tools expect a Cognito-like token endpoint:
+  - `POST /cognito/oauth2/token`
+- Keycloak provides the real token issuance under:
+  - `POST /realms/<realm>/protocol/openid-connect/token`
+- The adapter exposes a Cognito-compatible endpoint on **:8095** and forwards internally to Keycloak.
+
+#### Ports and URLs (yankee defaults)
+
+- Keycloak: `http://127.0.0.1:8080`
+- Adapter:  `http://127.0.0.1:8095/cognito/oauth2/token`
+
+Realm/client used in this deployment:
+- Realm: `vcs`
+- Client ID: `rw_token`
+
+#### Install / configure from scratch (server)
+
+> Assumption: you already have Docker running (see prerequisites in section 0).
+
+**A) Start Keycloak container** (example; adapt if you already run Keycloak via another method)
+
+```bash
+# Example container name used on yankee
+docker rm -f vcs-keycloak || true
+
+docker run -d --name vcs-keycloak \
+  -p 8080:8080 \
+  -e KEYCLOAK_ADMIN=admin \
+  -e KEYCLOAK_ADMIN_PASSWORD=admin \
+  quay.io/keycloak/keycloak:latest \
+  start-dev
+```
+
+**B) Create the realm + client (rw_token)**
+
+Use `kcadm.sh` from inside the container.
+
+```bash
+# Login to Keycloak admin
+docker exec -i vcs-keycloak /opt/keycloak/bin/kcadm.sh config credentials \
+  --server http://127.0.0.1:8080 \
+  --realm master \
+  --user admin \
+  --password admin
+
+# Create realm (ignore if it exists)
+docker exec -i vcs-keycloak /opt/keycloak/bin/kcadm.sh create realms -s realm=vcs -s enabled=true || true
+
+# Create client (confidential) (ignore if it exists)
+docker exec -i vcs-keycloak /opt/keycloak/bin/kcadm.sh create clients -r vcs \
+  -s clientId=rw_token \
+  -s enabled=true \
+  -s publicClient=false \
+  -s directAccessGrantsEnabled=true \
+  -s serviceAccountsEnabled=true || true
+
+# Fetch client internal id
+CID="$(docker exec -i vcs-keycloak /opt/keycloak/bin/kcadm.sh get clients -r vcs -q clientId=rw_token | jq -r '.[0].id' | tr -d '\r\n')"
+echo "CID=$CID"
+```
+
+**C) Set/rotate the client secret (single source of truth)**
+
+Generate a strong-looking secret and set it in **both** Keycloak and the adapter env file.
+
+```bash
+# Generate a URL-safe secret (no newlines)
+NEW_SECRET="$(openssl rand -base64 64 | tr -d '\n' | tr '+/' '-_' | tr -d '=' )"
+echo "LEN=${#NEW_SECRET}"
+
+# Update Keycloak client secret
+CID="$(docker exec -i vcs-keycloak /opt/keycloak/bin/kcadm.sh get clients -r vcs -q clientId=rw_token | jq -r '.[0].id' | tr -d '\r\n')"
+docker exec -i vcs-keycloak /opt/keycloak/bin/kcadm.sh update "clients/$CID" -r vcs -s "secret=$NEW_SECRET"
+
+# Verify secret in Keycloak
+docker exec -i vcs-keycloak /opt/keycloak/bin/kcadm.sh get "clients/$CID/client-secret" -r vcs | jq .
+```
+
+**D) Configure cognito-auth-adapter (systemd)**
+
+Service unit used on yankee:
+
+```bash
+sudo tee /etc/systemd/system/cognito-auth-adapter.service >/dev/null <<'EOF'
+[Unit]
+Description=VCS Cognito Auth Adapter (Keycloak)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=/var/www/VCS/vcs/cognito-auth-adapter.env
+ExecStart=/var/www/VCS/vcs/bin/cognito-auth-adapter
+Restart=on-failure
+RestartSec=2
+User=root
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl enable --now cognito-auth-adapter
+```
+
+Environment file (single canonical version; no duplicates/blank noise):
+
+```bash
+sudo tee /var/www/VCS/vcs/cognito-auth-adapter.env >/dev/null <<EOF
+HOST_URL=0.0.0.0:8095
+KEYCLOAK_BASE_URL=http://127.0.0.1:8080
+KEYCLOAK_REALM=vcs
+KEYCLOAK_CLIENT_ID=rw_token
+KEYCLOAK_CLIENT_SECRET=$NEW_SECRET
+EOF
+
+sudo systemctl restart cognito-auth-adapter
+sudo systemctl status cognito-auth-adapter --no-pager
+```
+
+#### Sanity checks (what we used)
+
+**Check port listener (adapter on 8095):**
+
+```bash
+sudo ss -lntp | grep ':8095' || true
+sudo lsof -iTCP:8095 -sTCP:LISTEN -n -P || true
+```
+
+**Check service logs:**
+
+```bash
+sudo journalctl -u cognito-auth-adapter -n 200 --no-pager
+# or follow
+sudo journalctl -u cognito-auth-adapter -f
+```
+
+**(Optional) Inspect adapter → Keycloak traffic** (useful if you suspect wrong client credentials):
+
+```bash
+# Keycloak port
+sudo tcpdump -ni lo -A -s0 'tcp port 8080 and host 127.0.0.1'
+
+# Adapter port
+sudo tcpdump -ni any tcp port 8095
+```
+
+#### Token requests (commands that worked)
+
+**1) Directly against Keycloak (ground truth):**
+
+```bash
+curl -sS -X POST \
+  "http://127.0.0.1:8080/realms/vcs/protocol/openid-connect/token" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  --data-urlencode "grant_type=password" \
+  --data-urlencode "client_id=rw_token" \
+  --data-urlencode "client_secret=$NEW_SECRET" \
+  --data-urlencode "username=usuario" \
+  --data-urlencode "password=CLAVE" \
+  --data-urlencode "scope=openid" | jq .
+```
+
+**2) Through the adapter (Cognito-style endpoint):**
+
+The adapter accepts Cognito-like requests at:
+- `POST http://127.0.0.1:8095/cognito/oauth2/token`
+
+The request that worked (Basic auth uses the **user credentials**, while the client credentials go in the form body):
+
+```bash
+curl -sS -u 'usuario:CLAVE' \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  --data-urlencode 'grant_type=password' \
+  --data-urlencode 'client_id=rw_token' \
+  --data-urlencode "client_secret=$NEW_SECRET" \
+  --data-urlencode 'scope=openid' \
+  http://127.0.0.1:8095/cognito/oauth2/token | jq .
+```
+
+> If you see `Invalid client or Invalid client credentials` you have a mismatch between the secret in Keycloak and the secret in `cognito-auth-adapter.env`.
+
+#### Helper script: `get-token.sh`
+
+To avoid retyping curl payloads and to keep the secret in one place, we created a helper script that:
+- reads `KEYCLOAK_CLIENT_SECRET` from `/var/www/VCS/vcs/cognito-auth-adapter.env`
+- requests a token from the adapter (default)
+- optionally requests a token directly from Keycloak (`--keycloak`)
+
+Create it on the server:
+
+```bash
+cat > /var/www/VCS/vcs/get-token.sh <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+ENV_FILE="/var/www/VCS/vcs/cognito-auth-adapter.env"
+ADAPTER_URL="${ADAPTER_URL:-http://127.0.0.1:8095/cognito/oauth2/token}"
+KEYCLOAK_URL="${KEYCLOAK_URL:-http://127.0.0.1:8080/realms/vcs/protocol/openid-connect/token}"
+
+CLIENT_ID="${CLIENT_ID:-rw_token}"
+
+# Defaults (override via flags or env vars)
+USERNAME="${USERNAME:-usuario}"
+PASSWORD="${PASSWORD:-CLAVE}"
+SCOPE="${SCOPE:-openid}"
+
+MODE="adapter"   # adapter | keycloak
+JUST_TOKEN=0
+
+usage() {
+  cat <<USAGE
+Usage:
+  $(basename "$0") [options]
+
+Options:
+  -u, --user USER        Username (default: \$USERNAME)
+  -p, --pass PASS        Password (default: \$PASSWORD)
+  --scope SCOPE          Scope (default: \$SCOPE)
+  --client-id ID         Client ID (default: \$CLIENT_ID)
+  --adapter              Call adapter endpoint (default)
+  --keycloak             Call keycloak endpoint directly
+  -t, --token            Print only access_token
+  -h, --help             Show this help
+
+Env overrides:
+  ADAPTER_URL, KEYCLOAK_URL, CLIENT_ID, USERNAME, PASSWORD, SCOPE
+USAGE
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -u|--user) USERNAME="$2"; shift 2;;
+    -p|--pass) PASSWORD="$2"; shift 2;;
+    --scope) SCOPE="$2"; shift 2;;
+    --client-id) CLIENT_ID="$2"; shift 2;;
+    --adapter) MODE="adapter"; shift;;
+    --keycloak) MODE="keycloak"; shift;;
+    -t|--token) JUST_TOKEN=1; shift;;
+    -h|--help) usage; exit 0;;
+    *) echo "Unknown arg: $1" >&2; usage; exit 2;;
+  esac
+done
+
+if [[ ! -f "$ENV_FILE" ]]; then
+  echo "ERROR: env file not found: $ENV_FILE" >&2
+  exit 1
+fi
+
+CLIENT_SECRET="$(grep '^KEYCLOAK_CLIENT_SECRET=' "$ENV_FILE" | cut -d= -f2- | tr -d '\r\n')"
+if [[ -z "${CLIENT_SECRET}" ]]; then
+  echo "ERROR: KEYCLOAK_CLIENT_SECRET not found in $ENV_FILE" >&2
+  exit 1
+fi
+
+if [[ "$MODE" == "adapter" ]]; then
+  RESP="$(curl -sS -u "${USERNAME}:${PASSWORD}" \
+    -H 'Content-Type: application/x-www-form-urlencoded' \
+    --data-urlencode 'grant_type=password' \
+    --data-urlencode "client_id=${CLIENT_ID}" \
+    --data-urlencode "client_secret=${CLIENT_SECRET}" \
+    --data-urlencode "scope=${SCOPE}" \
+    "${ADAPTER_URL}")"
+else
+  RESP="$(curl -sS -X POST \
+    -H 'Content-Type: application/x-www-form-urlencoded' \
+    --data-urlencode 'grant_type=password' \
+    --data-urlencode "client_id=${CLIENT_ID}" \
+    --data-urlencode "client_secret=${CLIENT_SECRET}" \
+    --data-urlencode "username=${USERNAME}" \
+    --data-urlencode "password=${PASSWORD}" \
+    --data-urlencode "scope=${SCOPE}" \
+    "${KEYCLOAK_URL}")"
+fi
+
+if command -v jq >/dev/null 2>&1; then
+  if [[ "$JUST_TOKEN" -eq 1 ]]; then
+    echo "$RESP" | jq -r '.access_token // empty'
+  else
+    echo "$RESP" | jq .
+  fi
+else
+  echo "$RESP"
+fi
+EOF
+
+chmod +x /var/www/VCS/vcs/get-token.sh
+```
+
+Usage examples:
+
+```bash
+# Adapter (default): full JSON
+/var/www/VCS/vcs/get-token.sh
+
+# Adapter: only access_token
+/var/www/VCS/vcs/get-token.sh -t
+
+# Directly to Keycloak (full JSON)
+/var/www/VCS/vcs/get-token.sh --keycloak
+
+# Override user/pass at call-time
+/var/www/VCS/vcs/get-token.sh -u otro -p 'otraClave'
+```
+
+> Security note: avoid putting real passwords on the command line in shared environments; prefer exporting `USERNAME` / `PASSWORD` in a secure session.
 
 ### 7.2 Cognito mock
+> **Note (compat/legacy):** This `cognito-mock` container is still used for specific **BDD/mock** flows that expect Cognito config files under `/app/.cognito/`. However, on **yankee** the primary OAuth/token service is now **Keycloak + cognito-auth-adapter** (see the section above). Keep `cognito-mock` only if you explicitly need those legacy/mock components.
 
 ```bash
 docker rm -f cognito-mock
@@ -237,6 +745,158 @@ docker run -d --name cognito-mock \
 
 Make sure `/var/www/VCS/vcs/test/bdd/fixtures/cognito-config/*` matches your issuer
 profiles (client ID, secret handle, etc.).
+
+#### IMPORTANT: 9229 vs 8094 (compat bridge used by BDD attestation)
+
+On **yankee**, we run `cognito-mock` (`aholovko/cognito-local`) on **9229** and expose it publicly under **`/cognito/`** via Nginx.
+
+However, some TrustBloc **BDD/mock components** (notably attestation/presentation code) are hardcoded to use:
+
+- base URL: `http://cognito-auth.local:8094/cognito`
+- token endpoint: `POST /cognito/oauth2/token`
+
+To keep compatibility, we provide a **local bridge on 127.0.0.1:8094** handled by **Nginx** that proxies to the running `cognito-mock` container.
+
+**Quick checks**:
+
+```bash
+# 8094 must be LISTENing on localhost (typically nginx)
+sudo ss -lntp | egrep ":8094|:9229" || true
+
+# verify the container is up
+sudo docker ps | grep cognito-mock || true
+```
+
+**Token endpoint contract (what the caller must send):**
+
+- Method: `POST`
+- Content-Type: `application/x-www-form-urlencoded`
+- Auth: `Authorization: Basic base64(<client_id>:<client_secret>)`
+
+If you see errors like:
+
+- `content-type must be 'application/x-www-form-urlencoded'`
+- `authorization header must be present and use HTTP Basic authentication scheme`
+
+…then the caller is hitting the right endpoint but sending the wrong headers.
+
+**Finding the correct client_id / client_secret**
+
+The credentials are defined by the config mounted into the container:
+
+```bash
+sudo docker exec -it cognito-mock ls -la /app/.cognito
+sudo docker exec -it cognito-mock cat /app/.cognito/config.json | sed -n '1,200p'
+```
+
+Use the values from that file to build the Basic header:
+
+```bash
+CLIENT_ID="<from config.json>"
+CLIENT_SECRET="<from config.json>"
+BASIC="$(printf '%s:%s' "$CLIENT_ID" "$CLIENT_SECRET" | base64 -w 0)"
+
+curl -sS -i -X POST http://127.0.0.1:8094/cognito/oauth2/token \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -H "Authorization: Basic $BASIC" \
+  --data 'grant_type=client_credentials' | sed -n '1,80p'
+```
+
+Expected: `HTTP/1.1 200` with an `access_token`.
+
+If you get `invalid_client`, your `client_id/secret` pair does not match the config.
+
+**Note:** `VC_OAUTH_SECRET` in `vcs/server.env` is used by vc-rest for API auth, but it is **not automatically** the Cognito client secret used by the BDD token endpoint.
+
+### 7.3 Attestation (mock-attestation) + wallet presentation bridge (IMPORTANT)
+
+This stack uses **Attestation** during the **presentation** flow (VP). The TrustBloc wallet will call **Login/Consent** paths under `/login/...` even though the upstream service that implements attestation is **mock-attestation**.
+
+#### Source of truth
+- **vc-rest is the source of truth** for what profiles/issuers exist (loaded from `profiles/profiles.json`).
+- Nginx must only **route** the wallet requests to the right upstream. It should **not** hardcode issuer/profile logic.
+
+#### What the wallet calls (observed in `nginx/access.log`)
+The wallet hits these endpoints on your public domain:
+- `POST /login/profiles/<profileID>/<profileVersion>/wallet/attestation/init`
+- `POST /login/profiles/<profileID>/<profileVersion>/wallet/attestation/complete`
+
+If these return `502` or `400`, presentation will fail.
+
+#### Upstream that must answer
+`mock-attestation` listens on **TLS**:
+- `https://127.0.0.1:8097/...` (NOT plain HTTP)
+
+Quick sanity checks:
+
+```bash
+# must show LISTEN on :8097
+sudo ss -lntp | grep :8097 || true
+
+# direct upstream test (MUST be HTTPS)
+curl -k -sS -i \
+  -X POST https://127.0.0.1:8097/profiles/profileID/profileVersion/wallet/attestation/init \
+  -H 'Content-Type: application/json' \
+  --data '{"payload":{"type":"urn:attestation:test"}}' | sed -n '1,40p'
+```
+
+If you see:
+- `Client sent an HTTP request to an HTTPS server.`
+
+…then you are calling the upstream with `http://` instead of `https://` (or Nginx is proxying with the wrong scheme).
+
+#### Nginx bridge (required)
+We add a dedicated **bridge location** so that `/login/.../wallet/attestation/*` is forwarded to the attestation service.
+
+Add this block **above** the generic `location /login/ { ... }` block:
+
+```nginx
+# --- BRIDGE: la wallet pega acá ---
+# /login/profiles/{id}/{ver}/wallet/attestation/init
+# /login/profiles/{id}/{ver}/wallet/attestation/complete
+location ~ ^/login(/profiles/[^/]+/[^/]+/wallet/attestation/(init|complete))$ {
+    # sacamos el prefijo /login y mandamos al mock-attestation
+    rewrite ^/login(/profiles/[^/]+/[^/]+/wallet/attestation/(init|complete))$ $1 break;
+
+    # IMPORTANT: mock-attestation is HTTPS on 8097
+    proxy_pass https://127.0.0.1:8097;
+    proxy_set_header Host mock-attestation.trustbloc.local;
+
+    proxy_http_version 1.1;
+    proxy_ssl_verify off;
+    proxy_ssl_server_name on;
+    proxy_ssl_name localhost;
+}
+```
+
+Reload and test:
+
+```bash
+sudo nginx -t && sudo systemctl reload nginx
+
+# EXACTO path que usa la wallet
+curl -k -sS -i \
+  -X POST https://yankee.openvino.org/login/profiles/profileID/profileVersion/wallet/attestation/init \
+  -H 'Content-Type: application/json' \
+  --data '{"payload":{"type":"urn:attestation:test"}}' | sed -n '1,40p'
+```
+
+Expected:
+- `HTTP/2 200` with JSON body containing `{ "challenge": ..., "session_id": ... }`.
+
+If you still get `502`, check `nginx/error.log` for `connect() failed (111: Connection refused)`.
+That means the upstream (8097) is not reachable or not running.
+
+#### Systemd service name (yankee)
+On yankee we run it as:
+- `mock-attestation.service`
+
+Useful commands:
+
+```bash
+sudo systemctl status mock-attestation --no-pager
+sudo journalctl -u mock-attestation -n 100 --no-pager
+```
 
 ### 7.3 Login/consent + Attestation (if needed)
 
@@ -367,6 +1027,8 @@ Repeat this pattern for any other containerized component (e.g., custom mocks).
   ]
 }
 ```
+
+> **Source of truth note (IMPORTANT):** `vc-rest` loads all issuer/verifier profiles from `profiles/profiles.json` at startup (this is the authoritative registry of `{id, version}` and related metadata). Nginx should **not** encode profile logic; it should only route requests to the correct upstream services.
 
 Adjust the claim metadata, credential templates, and OIDC config for your domain.
 Reload `vc-rest` after changing profiles.
@@ -607,117 +1269,148 @@ flutter run
 
 ## 12. Troubleshooting
 
-### 12.1 “Volver a levantar todo” (pasos rápidos que usamos en yankee)
+### 12.1 Keycloak / Cognito Auth Adapter
 
-#### A) Nginx: validar y recargar
+**Symptom:** `Invalid client or Invalid client credentials`  
+**Cause:** Client secret mismatch between Keycloak and `cognito-auth-adapter.env`.
 
+**Fix:**
 ```bash
-sudo nginx -t
-sudo systemctl reload nginx
-# si seguís viendo cosas raras, reinicio completo:
-sudo systemctl restart nginx
+# Verify secret in Keycloak
+CID="$(docker exec -i vcs-keycloak /opt/keycloak/bin/kcadm.sh get clients -r vcs -q clientId=rw_token | jq -r '.[0].id')"
+docker exec -i vcs-keycloak /opt/keycloak/bin/kcadm.sh get "clients/$CID/client-secret" -r vcs
+
+# Verify env file
+grep KEYCLOAK_CLIENT_SECRET /var/www/VCS/vcs/cognito-auth-adapter.env
+
+# Restart adapter
+sudo systemctl restart cognito-auth-adapter
 ```
 
-#### B) Linked Domains: servir `/.well-known/did-configuration.json` desde Nginx
+---
 
-En `yankee.openvino.org` expusimos el archivo generado por `tools/didconfig` con un `alias` directo:
+**Symptom:** `Invalid user credentials`  
+**Cause:** Wrong username/password or user not fully initialized in Keycloak.
 
-```nginx
-location = /.well-known/did-configuration.json {
-    alias /var/www/VCS/.well-known/did-configuration.json;
-    default_type application/json;
-}
+**Fix:**
+```bash
+# Inspect user
+docker exec -i vcs-keycloak /opt/keycloak/bin/kcadm.sh get users -r vcs | jq .
+
+# Ensure no required actions remain
+docker exec -i vcs-keycloak /opt/keycloak/bin/kcadm.sh get "users/<USER_ID>" -r vcs | jq '.requiredActions'
+
+# Reset password
+docker exec -i vcs-keycloak /opt/keycloak/bin/kcadm.sh set-password -r vcs \
+  --userid <USER_ID> \
+  --new-password CLAVE \
+  --temporary=false
 ```
 
-Validación rápida:
+---
 
+**Symptom:** Adapter responds but Keycloak is never hit  
+**Cause:** Wrong `KEYCLOAK_BASE_URL` or adapter not restarted.
+
+**Fix:**
 ```bash
-curl -i https://yankee.openvino.org/.well-known/did-configuration.json
+grep KEYCLOAK_BASE_URL /var/www/VCS/vcs/cognito-auth-adapter.env
+sudo systemctl restart cognito-auth-adapter
+sudo journalctl -u cognito-auth-adapter -n 50 --no-pager
 ```
 
-> Nota: si lo estás pidiendo bajo `/vc-rest-api/.../.well-known/did-configuration.json` y te da `401`, no es el endpoint público correcto. El linked-domain se publica en `/.well-known/did-configuration.json` en el **dominio**.
+---
 
-#### C) Issuance: confirmar que vc-rest responde y genera el offer
+### 12.2 Port / Network Issues
 
-Local (desde el server):
-
+**Symptom:** Connection refused on `:8095`  
+**Fix:**
 ```bash
-curl -sS http://localhost:9075/issuer/profiles/bank_issuer/v1.0/interactions/initiate-oidc \
-  -H 'Content-Type: application/json' \
-  -H 'X-API-Key: rw_token' \
-  -H 'X-Tenant-ID: f13d1va9lp403pb9lyj89vk55' \
-  --data '{
-    "grant_type": "urn:ietf:params:oauth:grant-type:pre-authorized_code",
-    "scope": [],
-    "credential_configuration": [
-      {
-        "credential_configuration_id": "VerifiedEmployee_jwt_vc_json_v1",
-        "claim_data": {
-          "displayName": "Alice Bank",
-          "givenName": "Alice",
-          "jobTitle": "Analyst",
-          "mail": "alice@bank.org"
-        }
-      }
-    ]
-  }'
+sudo ss -lntp | grep :8095
+sudo systemctl status cognito-auth-adapter
 ```
 
-Público (desde afuera):
-
+**Symptom:** Keycloak unreachable on `:8080`  
+**Fix:**
 ```bash
-curl -sS https://yankee.openvino.org/vc-rest-api/issuer/profiles/bank_issuer/v1.0/interactions/initiate-oidc \
-  -H 'Content-Type: application/json' \
-  -H 'X-API-Key: rw_token' \
-  -H 'X-Tenant-ID: f13d1va9lp403pb9lyj89vk55' \
-  --data '{
-    "grant_type": "urn:ietf:params:oauth:grant-type:pre-authorized_code",
-    "scope": [],
-    "credential_configuration": [
-      {
-        "credential_configuration_id": "VerifiedEmployee_jwt_vc_json_v1",
-        "claim_data": { "displayName": "Alice Bank", "givenName": "Alice", "jobTitle": "Analyst", "mail": "alice@bank.org" }
-      }
-    ]
-  }'
+docker ps | grep keycloak
+curl -I http://127.0.0.1:8080
 ```
 
-Deberías recibir:
-- `offer_credential_url` (para QR / deep link)
-- `tx_id`
+---
 
-#### D) Flutter wallet (Android): limpieza agresiva que hicimos cuando explotó Gradle/gomobile
+### 12.3 Issuance Works, Presentation Fails (Most Common)
 
+**Likely causes:**
+1. Attestation bridge missing in Nginx
+2. mock-attestation not running
+3. Cognito mock / compat bridge missing
+
+**Checks:**
 ```bash
-# dentro del proyecto Flutter
-dart --version
-flutter --version
+# mock-attestation must be HTTPS on 8097
+sudo ss -lntp | grep :8097
+
+# Public path must proxy correctly
+curl -k -i https://yankee.openvino.org/login/profiles/.../wallet/attestation/init
+
+# Cognito compat ports
+sudo ss -lntp | egrep ':8094|:9229'
+```
+
+---
+
+### 12.4 vc-rest Issues
+
+**Symptom:** Issuer not found / wrong branding  
+**Cause:** `profiles.json` edited but vc-rest not restarted.
+
+**Fix:**
+```bash
+sudo systemctl restart vc-rest
+sudo journalctl -u vc-rest -n 50 --no-pager
+```
+
+---
+
+### 12.5 Wallet / Flutter Issues
+
+**Symptom:** gomobile crashes or Gradle errors  
+**Cause:** Wrong Go version or stale caches.
+
+**Fix (known-good reset):**
+```bash
+go version        # must be 1.24.x
+go env GOTOOLCHAIN
 
 flutter clean
-flutter pub get
-
-# limpiar caches que nos rompían el build
 rm -rf ~/.gradle/caches
 rm -rf android/.gradle
-rm -rf "$HOME/Library/Caches/gomobile"
-rm -rf "$(go env GOPATH)/pkg/gomobile"
+rm -rf ~/Library/Caches/gomobile
+rm -rf $(go env GOPATH)/pkg/gomobile
 
-# re-inicializar gomobile
-# (si no lo tenés instalado: go install golang.org/x/mobile/cmd/gomobile@latest)
 gomobile init -v
-
-# volver a correr
 flutter run
 ```
 
-Si aparece un error tipo `:app:checkDebugAarMetadata` con `datastore-core/.../aar-metadata.properties (No such file or directory)`, normalmente se resuelve con el wipe de `~/.gradle/caches` + `android/.gradle` y un rebuild limpio.
+---
 
-- `vc-rest` errors about linked domains → regenerate DID artifacts (`go run .`)
-  and restart the resolver container.
-- `cognito-mock` failing → ensure `/app/.cognito/config.json` matches the
-  client ID/secret in your issuer profile.
-- Docker services not starting on boot → wrap the `docker run` commands in
-  systemd units (`docker run --restart unless-stopped` is another option).
+### 12.6 Quick “Bring Everything Back Up” Checklist
+
+```bash
+sudo systemctl restart nginx
+sudo systemctl restart vc-rest
+sudo systemctl restart cognito-auth-adapter
+sudo systemctl restart mock-attestation
+sudo systemctl restart cognito-mock
+
+docker ps
+```
+
+If something still fails:
+- Check `journalctl -u <service>`
+- Check `nginx/error.log`
+- Verify secrets and ports
 
 ## 13. Rotate the VC REST data-encryption key
 
