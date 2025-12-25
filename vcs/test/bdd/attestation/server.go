@@ -16,6 +16,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -31,9 +32,9 @@ import (
 )
 
 const (
-	vcsAPIGateway        = "https://api-gateway.trustbloc.local:8080"
-	issueCredentialURL   = vcsAPIGateway + "/issuer/profiles/i_myprofile_jwt_client_attestation/v1.0/credentials/issue"
-	oidcProviderURL      = "http://cognito-auth.local:8094/cognito"
+	vcsAPIGateway       = "https://yankee.openvino.org/vc-rest-api"
+	issueCredentialURL  = vcsAPIGateway + "/issuer/profiles/i_myprofile_jwt_client_attestation/v1.0/credentials/issue"
+	oidcProviderURL     = "http://cognito-auth.local:8094/cognito"
 	oidcProviderUsername = "profile-user-issuer-1"
 	oidcProviderPassword = "profile-user-issuer-1-pwd"
 )
@@ -52,9 +53,14 @@ type server struct {
 func newServer() *server {
 	router := mux.NewRouter()
 
-	rootCAs, err := tlsutils.GetCertPool(false, []string{os.Getenv("ROOT_CA_CERTS_PATH")})
+	// ✅ IMPORTANT:
+	// Use SystemCertPool + extra CA certs (ROOT_CA_CERTS_PATH) so we don't break public CAs
+	// and we can still trust internal/dev CAs (trustbloc-dev, combined-ca, etc.)
+	extraCAPaths := parseCAPaths(os.Getenv("ROOT_CA_CERTS_PATH"))
+
+	rootCAs, err := tlsutils.GetCertPool(true, extraCAPaths)
 	if err != nil {
-		panic(err)
+		panic(fmt.Errorf("build root CA pool: %w", err))
 	}
 
 	httpClient := &http.Client{
@@ -74,7 +80,41 @@ func newServer() *server {
 	router.HandleFunc("/profiles/profileID/profileVersion/wallet/attestation/init", srv.evaluateWalletAttestationInitRequest).Methods(http.MethodPost)
 	router.HandleFunc("/profiles/profileID/profileVersion/wallet/attestation/complete", srv.evaluateWalletAttestationCompleteRequest).Methods(http.MethodPost)
 
+	// (Opcional) health check simple
+	router.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("ok"))
+	}).Methods(http.MethodGet)
+
 	return srv
+}
+
+func parseCAPaths(v string) []string {
+	v = strings.TrimSpace(v)
+	if v == "" {
+		return nil
+	}
+
+	// Allow either ":" (PATH style) or "," separated lists
+	seps := []string{":", ","}
+
+	parts := []string{v}
+	for _, sep := range seps {
+		if strings.Contains(v, sep) {
+			parts = strings.Split(v, sep)
+			break
+		}
+	}
+
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
 }
 
 func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -86,9 +126,7 @@ func (s *server) evaluateWalletAttestationInitRequest(w http.ResponseWriter, r *
 
 	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
-		s.writeResponse(
-			w, http.StatusBadRequest, fmt.Sprintf("decode wallet attestation init request: %s", err.Error()))
-
+		s.writeResponse(w, http.StatusBadRequest, fmt.Sprintf("decode wallet attestation init request: %s", err.Error()))
 		return
 	}
 
@@ -109,7 +147,6 @@ func (s *server) evaluateWalletAttestationInitRequest(w http.ResponseWriter, r *
 	go func() {
 		time.Sleep(5 * time.Minute)
 		s.sessions.Delete(sessionID)
-
 		log.Printf("session %s is deleted", sessionID)
 	}()
 
@@ -127,9 +164,7 @@ func (s *server) evaluateWalletAttestationCompleteRequest(w http.ResponseWriter,
 
 	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
-		s.writeResponse(
-			w, http.StatusBadRequest, fmt.Sprintf("decode wallet attestation init request: %s", err.Error()))
-
+		s.writeResponse(w, http.StatusBadRequest, fmt.Sprintf("decode wallet attestation init request: %s", err.Error()))
 		return
 	}
 
@@ -137,27 +172,23 @@ func (s *server) evaluateWalletAttestationCompleteRequest(w http.ResponseWriter,
 
 	if request.AssuranceLevel != "low" {
 		s.writeResponse(w, http.StatusBadRequest, "assuranceLevel field is invalid")
-
 		return
 	}
 
 	if request.Proof.ProofType != "jwt" {
 		s.writeResponse(w, http.StatusBadRequest, "proof.ProofType field is invalid")
-
 		return
 	}
 
 	walletDID, sesData, err := s.evaluateWalletProofJWT(request.SessionID, request.Proof.Jwt)
 	if err != nil {
 		s.writeResponse(w, http.StatusBadRequest, err.Error())
-
 		return
 	}
 
 	attestationVC, err := s.attestationVC(r.Context(), walletDID, sesData)
 	if err != nil {
 		s.writeResponse(w, http.StatusInternalServerError, err.Error())
-
 		return
 	}
 
@@ -216,11 +247,7 @@ func (s *server) evaluateWalletProofJWT(sessionID, proofJWT string) (string, *se
 	return jwtProofClaims.Issuer, &sessionData, nil
 }
 
-func (s *server) attestationVC(
-	ctx context.Context,
-	walletDID string,
-	ses *sessionMetadata,
-) (string, error) {
+func (s *server) attestationVC(ctx context.Context, walletDID string, ses *sessionMetadata) (string, error) {
 	vcc := verifiable.CredentialContents{
 		Context: []string{
 			verifiable.V1ContextURI,
@@ -290,7 +317,6 @@ func (s *server) attestationVC(
 	if err != nil {
 		return "", fmt.Errorf("send request: %w", err)
 	}
-
 	defer resp.Body.Close()
 
 	b, err := io.ReadAll(resp.Body)
@@ -298,11 +324,7 @@ func (s *server) attestationVC(
 		return "", fmt.Errorf("read response: %w", err)
 	}
 
-	expectedCodes := []int{
-		http.StatusOK,
-		http.StatusCreated,
-	}
-
+	expectedCodes := []int{http.StatusOK, http.StatusCreated}
 	if !lo.Contains(expectedCodes, resp.StatusCode) {
 		return "", fmt.Errorf("unexpected status code: %d; response: %s", resp.StatusCode, string(b))
 	}
@@ -328,18 +350,13 @@ func (s *server) issueAccessToken(ctx context.Context) (string, error) {
 
 	fmt.Printf("token: %v\n", token)
 
+	// NOTE: this assumes your IdP returns id_token in the response (as your logs show).
 	return token.Extra("id_token").(string), nil
 }
 
-// writeResponse writes interface value to response
-func (s *server) writeResponse(
-	rw http.ResponseWriter,
-	status int,
-	msg string,
-) {
+// writeResponse writes message to response
+func (s *server) writeResponse(rw http.ResponseWriter, status int, msg string) {
 	log.Printf("[%d]   %s", status, msg)
-
 	rw.WriteHeader(status)
-
 	_, _ = rw.Write([]byte(msg))
 }

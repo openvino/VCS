@@ -1,0 +1,37 @@
+{
+  "realm": "vcs",
+  "enabled": true,
+  "displayName": "VCS",
+  "accessTokenLifespan": 300,
+  "ssoSessionIdleTimeout": 1800,
+  "clients": [
+    {
+      "clientId": "rw_token",
+      "name": "rw_token",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "MI_SECRET_LARGO_123",
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "frontchannelLogout": false,
+      "redirectUris": ["*"],
+      "webOrigins": ["*"],
+      "attributes": {
+        "client.secret.creation.time": "0"
+      }
+    }
+  ],
+  "users": [
+    {
+      "username": "USUARIO",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        { "type": "password", "value": "CLAVE", "temporary": false }
+      ]
+    }
+  ]
+}

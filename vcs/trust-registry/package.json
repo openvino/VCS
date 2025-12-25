@@ -1,0 +1,17 @@
+{
+  "name": "openvino-trust-registry",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "db:migrate": "node src/migrate.js",
+    "health": "node -e \"fetch('http://localhost:8100/healthz').then(r=>r.text()).then(console.log).catch(console.error)\""
+  },
+  "dependencies": {
+    "fastify": "^4.29.1",
+    "pg": "^8.13.1"
+  }
+}

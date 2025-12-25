@@ -2,9 +2,17 @@
   "rules": [
     {
       "pattern": "^(did:ion:bank_issuer)$",
-      "url": "https://yankee.openvino.org/files/dids/did-ion-bank-issuer.json"
+      "url": "https://yankee.openvino.org/files/dids/did-ion-bank_issuer.json"
     },
-    { "pattern": "^(did:key:.+)$" },
-    { "pattern": "^(did:web:.+)$" }
+    {
+      "pattern": "^(did:ion:manatoko_issuer)$",
+      "url": "https://yankee.openvino.org/files/dids/did-ion-manatoko_issuer.json"
+    },
+    {
+      "pattern": "^(did:key:.+)$"
+    },
+    {
+      "pattern": "^(did:web:.+)$"
+    }
   ]
 }

@@ -1,1 +1,10 @@
-{}
+{
+  "clients": [
+    {
+      "client_id": "rw_token",
+      "client_secret": "changeme-secret",
+      "grant_types": ["client_credentials"],
+      "scopes": ["openid", "profile", "vc"]
+    }
+  ]
+}{}

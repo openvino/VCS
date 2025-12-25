@@ -3,9 +3,14 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
+	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/trustbloc/did-go/doc/did"
@@ -28,39 +33,227 @@ const (
 	vcTypeDomainLinkageCredential = "DomainLinkageCredential"
 )
 
+type ProfilesRoot struct {
+	Issuers []IssuerEntry `json:"issuers"`
+}
+
+type IssuerEntry struct {
+	Issuer IssuerProfile `json:"issuer"`
+}
+
+type IssuerProfile struct {
+	ID      string                 `json:"id"`
+	Version string                 `json:"version"`
+	Raw     map[string]interface{} `json:"-"`
+}
+
+type ResolverConfig struct {
+	Rules []ResolverRule `json:"rules"`
+}
+
+type ResolverRule struct {
+	Pattern string `json:"pattern"`
+	URL     string `json:"url,omitempty"`
+}
+
 func main() {
-	const (
-		issuerDID          = "did:ion:bank_issuer"
-		verificationMethod = "did:ion:bank_issuer#key-id"
-		domain             = "https://yankee.openvino.org"
-		stagingFile        = "/var/www/VCS/.well-known/did-configuration.json"
-		didDocFile         = "/var/www/VCS/vcs/test/bdd/fixtures/file-server/dids/did-ion-bank-issuer.json"
-	)
+	// === Defaults “de tu server” ===
+	profilesPath := getenvDefault("VC_REST_PROFILES_JSON", "/var/www/VCS/profiles/profiles.json")
+	domain := getenvDefault("DOMAIN", "https://yankee.openvino.org")
 
-	cred, jwk, err := createLinkedDomainCredential(issuerDID, verificationMethod, domain)
-	exitOnErr("create credential", err)
+	// did-configuration.json (lo que consume wallets para Domain Linkage)
+	didConfigurationOut := getenvDefault("DID_CONFIGURATION_OUT", "/var/www/VCS/.well-known/did-configuration.json")
 
-	output := map[string]interface{}{
-		"@context": []string{didConfigurationContextURL},
-		"linked_dids": []interface{}{
-			cred.JWTEnvelope.JWT,
-		},
+	// donde generás fixtures DID docs (lo que vos ya venías haciendo)
+	fixturesDidDir := getenvDefault("FIXTURES_DID_DIR", "/var/www/VCS/vcs/test/bdd/fixtures/file-server/dids")
+
+	// docroot real que sirve Nginx para /files/dids/*
+	filesWebRoot := getenvDefault("FILES_WEB_ROOT", "/var/www/VCS/files")
+	filesDidsDir := filepath.Join(filesWebRoot, "dids")
+
+	// config del did-resolver (docker mount)
+	resolverConfigPath := getenvDefault("DID_RESOLVER_CONFIG", "/var/www/VCS/vcs/test/bdd/fixtures/did-resolver/config.json")
+
+	// URL externa que el resolver debe usar para servir docs estáticos
+	filesBaseURL := getenvDefault("FILES_BASE_URL", domain+"/files/dids")
+
+	// generar también reglas del resolver
+	updateResolver := getenvDefault("UPDATE_DID_RESOLVER_CONFIG", "true") == "true"
+
+	issuers, err := loadIssuers(profilesPath)
+	exitOnErr("load profiles", err)
+	if len(issuers) == 0 {
+		log.Fatalf("no issuers found in %s", profilesPath)
 	}
 
-	bytes, err := json.MarshalIndent(output, "", "  ")
-	exitOnErr("marshal json", err)
+	// Crea dirs
+	exitOnErr("mkdir fixtures dids", os.MkdirAll(fixturesDidDir, 0o755))
+	exitOnErr("mkdir files dids", os.MkdirAll(filesDidsDir, 0o755))
 
-	exitOnErr("write staging file", writeFile(stagingFile, bytes))
-	log.Printf("did-configuration written to %s\n", stagingFile)
+	linkedDIDs := make([]interface{}, 0, len(issuers))
+	createdDocs := 0
+	createdLinks := 0
 
-	doc, err := buildDIDDocument(issuerDID, verificationMethod, domain, jwk)
-	exitOnErr("build did doc", err)
+	// cargá resolver config si lo vamos a tocar
+	var rc ResolverConfig
+	var rcLoaded bool
+	if updateResolver {
+		rc, err = loadResolverConfig(resolverConfigPath)
+		exitOnErr("load did-resolver config", err)
+		rcLoaded = true
+	}
 
-	docBytes, err := json.MarshalIndent(doc, "", "  ")
-	exitOnErr("marshal did doc", err)
+	// ordenar estable por issuer ID para reproducibilidad
+	sort.SliceStable(issuers, func(i, j int) bool { return issuers[i].ID < issuers[j].ID })
 
-	exitOnErr("write did doc", writeFile(didDocFile, docBytes))
-	log.Printf("did document written to %s\n", didDocFile)
+	for _, iss := range issuers {
+		issuerDID := "did:ion:" + iss.ID
+		verificationMethod := issuerDID + "#key-id"
+
+		// 1) linked_dids (JWT VC Domain Linkage)
+		cred, jwk, err := createLinkedDomainCredential(issuerDID, verificationMethod, domain)
+		if err != nil {
+			log.Printf("skip issuer %s (%s): create credential failed: %v", iss.ID, iss.Version, err)
+			continue
+		}
+		linkedDIDs = append(linkedDIDs, cred.JWTEnvelope.JWT)
+		createdLinks++
+
+		// 2) DID Document (fixture)
+		doc, err := buildDIDDocument(issuerDID, verificationMethod, domain, jwk)
+		if err != nil {
+			log.Printf("warn issuer %s: build did doc failed: %v", iss.ID, err)
+			continue
+		}
+		docBytes, err := json.MarshalIndent(doc, "", "  ")
+		if err != nil {
+			log.Printf("warn issuer %s: marshal did doc failed: %v", iss.ID, err)
+			continue
+		}
+
+		filename := "did-ion-" + iss.ID + ".json" // mantiene underscore si el issuer ID lo tiene
+		fixturePath := filepath.Join(fixturesDidDir, filename)
+
+		if err := writeFile(fixturePath, docBytes); err != nil {
+			log.Printf("warn issuer %s: write fixture did doc failed: %v", iss.ID, err)
+			continue
+		}
+		log.Printf("did document written to %s", fixturePath)
+
+		// 3) copiar al docroot de /files/dids
+		publicPath := filepath.Join(filesDidsDir, filename)
+		if err := writeFile(publicPath, docBytes); err != nil {
+			log.Printf("warn issuer %s: write public did doc failed: %v", iss.ID, err)
+			continue
+		}
+		createdDocs++
+		log.Printf("did document published to %s", publicPath)
+
+		// 4) asegurar regla en did-resolver/config.json
+		if updateResolver && rcLoaded {
+			pattern := fmt.Sprintf("^(%s)$", regexp.QuoteMeta(issuerDID))
+			targetURL := filesBaseURL + "/" + url.PathEscape(filename)
+
+			if !hasRule(rc.Rules, pattern, targetURL) {
+				rc.Rules = upsertRule(rc.Rules, ResolverRule{
+					Pattern: pattern,
+					URL:     targetURL,
+				})
+				log.Printf("did-resolver rule upserted: %s -> %s", pattern, targetURL)
+			}
+		}
+	}
+
+	if createdLinks == 0 {
+		log.Fatalf("no issuers could be processed from %s", profilesPath)
+	}
+
+	// 5) escribir did-configuration.json
+	out := map[string]interface{}{
+		"@context":    []string{didConfigurationContextURL},
+		"linked_dids": linkedDIDs,
+	}
+	bytes, err := json.MarshalIndent(out, "", "  ")
+	exitOnErr("marshal did-configuration json", err)
+	exitOnErr("write did-configuration file", writeFile(didConfigurationOut, bytes))
+	log.Printf("did-configuration written to %s (linked_dids=%d)", didConfigurationOut, len(linkedDIDs))
+
+	// 6) escribir did-resolver/config.json actualizado (si aplica)
+	if updateResolver && rcLoaded {
+		rcBytes, err := json.MarshalIndent(rc, "", "  ")
+		exitOnErr("marshal did-resolver config", err)
+		exitOnErr("write did-resolver config", writeFile(resolverConfigPath, rcBytes))
+		log.Printf("did-resolver config updated at %s", resolverConfigPath)
+		log.Printf("NOTE: restart did-resolver.service to apply: sudo systemctl restart did-resolver.service")
+	}
+
+	log.Printf("DONE: issuers=%d linked=%d did_docs_published=%d", len(issuers), createdLinks, createdDocs)
+}
+
+func loadIssuers(path string) ([]IssuerProfile, error) {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	var root ProfilesRoot
+	if err := json.Unmarshal(b, &root); err != nil {
+		return nil, err
+	}
+	out := make([]IssuerProfile, 0, len(root.Issuers))
+	for _, e := range root.Issuers {
+		id := strings.TrimSpace(e.Issuer.ID)
+		if id == "" {
+			continue
+		}
+		out = append(out, IssuerProfile{
+			ID:      id,
+			Version: strings.TrimSpace(e.Issuer.Version),
+		})
+	}
+	return out, nil
+}
+
+func loadResolverConfig(path string) (ResolverConfig, error) {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return ResolverConfig{}, err
+	}
+	var rc ResolverConfig
+	if err := json.Unmarshal(b, &rc); err != nil {
+		return ResolverConfig{}, err
+	}
+	if rc.Rules == nil {
+		rc.Rules = []ResolverRule{}
+	}
+	return rc, nil
+}
+
+func hasRule(rules []ResolverRule, pattern, url string) bool {
+	for _, r := range rules {
+		if r.Pattern == pattern && r.URL == url {
+			return true
+		}
+	}
+	return false
+}
+
+// upsert: si existe pattern lo actualiza; si no existe lo inserta “arriba” (después de la primera regla si hay)
+func upsertRule(rules []ResolverRule, rule ResolverRule) []ResolverRule {
+	for i := range rules {
+		if rules[i].Pattern == rule.Pattern {
+			rules[i].URL = rule.URL
+			return rules
+		}
+	}
+	// Inserción: después de la primera regla (mantiene tu orden actual: primero estáticos, luego did:key/web)
+	if len(rules) <= 1 {
+		return append(rules, rule)
+	}
+	out := make([]ResolverRule, 0, len(rules)+1)
+	out = append(out, rules[0])
+	out = append(out, rule)
+	out = append(out, rules[1:]...)
+	return out
 }
 
 func createLinkedDomainCredential(issuerDID, verificationMethod, domain string) (*verifiable.Credential, *kmsjwk.JWK, error) {
@@ -88,7 +281,6 @@ func createLinkedDomainCredential(issuerDID, verificationMethod, domain string) 
 	}
 
 	contents := buildCredentialContents(issuerDID, domain)
-
 	unsignedVC, err := verifiable.CreateCredential(contents, nil)
 	if err != nil {
 		return nil, nil, err
@@ -111,11 +303,11 @@ func createLocalKMS() (*kms.KeyManager, error) {
 		MasterKey:         getenvOrFail("VC_REST_LOCAL_KMS_MASTER_KEY"),
 		SecretLockKeyPath: os.Getenv("VC_REST_LOCAL_KMS_SECRET_LOCK_KEY_PATH"),
 	}
-
 	return kms.NewAriesKeyManager(cfg, nil)
 }
 
 func buildCredentialContents(issuerDID, domain string) verifiable.CredentialContents {
+	now := time.Now().UTC()
 	return verifiable.CredentialContents{
 		Context: []string{
 			w3CredentialsURL,
@@ -132,8 +324,8 @@ func buildCredentialContents(issuerDID, domain string) verifiable.CredentialCont
 				"origin": domain,
 			},
 		}},
-		Issued:  utiltime.NewTime(time.Now().UTC()),
-		Expired: utiltime.NewTime(time.Now().UTC().Add(365 * 24 * time.Hour)),
+		Issued:  utiltime.NewTime(now),
+		Expired: utiltime.NewTime(now.Add(365 * 24 * time.Hour)),
 	}
 }
 
@@ -213,18 +405,23 @@ func newStaticDIDDoc(issuerDID, verificationMethod string) *did.Doc {
 		Type:       "JsonWebKey2020",
 		Controller: issuerDID,
 	}
-
 	doc := &did.Doc{
 		ID:                 issuerDID,
 		VerificationMethod: []did.VerificationMethod{vm},
 	}
-
 	doc.Authentication = []did.Verification{{
 		VerificationMethod: vm,
 		Relationship:       did.Authentication,
 	}}
-
 	return doc
+}
+
+func getenvDefault(name, def string) string {
+	v := os.Getenv(name)
+	if v == "" {
+		return def
+	}
+	return v
 }
 
 func getenvOrFail(name string) string {

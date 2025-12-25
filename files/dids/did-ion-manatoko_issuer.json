@@ -1,0 +1,32 @@
+{
+  "@context": [
+    "https://www.w3.org/ns/did/v1"
+  ],
+  "id": "did:ion:manatoko_issuer",
+  "verificationMethod": [
+    {
+      "id": "did:ion:manatoko_issuer#key-id",
+      "type": "JsonWebKey2020",
+      "controller": "did:ion:manatoko_issuer",
+      "publicKeyJwk": {
+        "crv": "Ed25519",
+        "kid": "PDUfDlarg_g3L6qvq3mzEPHUUeqW_fmAFHYQmQvM9uw",
+        "kty": "OKP",
+        "x": "HfCDoBFuj0T27SJx42HfSwocOjs8TmY5GoxTldY0NB4"
+      }
+    }
+  ],
+  "authentication": [
+    "did:ion:manatoko_issuer#key-id"
+  ],
+  "assertionMethod": [
+    "did:ion:manatoko_issuer#key-id"
+  ],
+  "service": [
+    {
+      "id": "did:ion:manatoko_issuer#linked-domain",
+      "type": "LinkedDomains",
+      "serviceEndpoint": "https://yankee.openvino.org/.well-known/did-configuration.json"
+    }
+  ]
+}

@@ -7,7 +7,6 @@
         "groupID": "group_bank_issuer",
         "name": "Bank Issuer",
         "organizationID": "f13d1va9lp403pb9lyj89vk55",
-
         "url": "https://yankee.openvino.org/vc-rest-api/oidc/idp",
         "webHook": "https://yankee.openvino.org/webhook/issue",
         "active": true,
@@ -18,41 +17,34 @@
           "keyType": "ED25519",
           "format": "jwt",
           "didMethod": "ion",
-          "status": {
-            "type": "StatusList2021Entry"
-          }
+          "status": { "type": "StatusList2021Entry" }
         },
 
         "oidcConfig": {
           "client_id": "7d4u50e7w6nfq8tfayhzplgjf",
           "client_secret_handle": "282ks4fkuqfosus5k0x30abnv",
-
           "issuer_well_known": "https://yankee.openvino.org/cognito/local_5a9GzRvB/.well-known/openid-configuration",
 
           "scopes_supported": ["openid", "profile"],
-
           "grant_types_supported": [
             "authorization_code",
             "urn:ietf:params:oauth:grant-type:pre-authorized_code"
           ],
-
           "response_types_supported": ["code"],
           "token_endpoint_auth_methods_supported": ["none"],
 
           "enable_dynamic_client_registration": true,
           "pre-authorized_grant_anonymous_access_supported": true,
-
           "signed_issuer_metadata_supported": true
         },
 
         "credentialTemplates": [
           {
-            "contexts": [
-              "https://www.w3.org/2018/credentials/v1",
-              "https://www.w3.org/2018/credentials/examples/v1"
-            ],
+            "id": "bank_employee_template",
             "type": "VerifiedEmployee",
-            "id": "templateID",
+            "contexts": [
+              "https://www.w3.org/2018/credentials/v1"
+              ],
             "issuer": "did:ion:bank_issuer"
           }
         ],
@@ -62,7 +54,7 @@
             "VerifiedEmployee_jwt_vc_json_v1": {
               "format": "jwt_vc_json",
 
-              "order": ["displayName", "givenName", "jobTitle", "mail"],
+              "order": ["displayName", "givenName", "surname", "jobTitle", "mail"],
 
               "credential_definition": {
                 "type": ["VerifiableCredential", "VerifiedEmployee"],
@@ -75,20 +67,20 @@
                     "display": [{ "name": "Given Name", "locale": "en-US" }],
                     "value_type": "string"
                   },
-                  "jobTitle": {
-                    "display": [{ "name": "Job Title", "locale": "en-US" }],
-                    "value_type": "string"
-                  },
                   "surname": {
                     "display": [{ "name": "Surname", "locale": "en-US" }],
                     "value_type": "string"
                   },
-                  "preferredLanguage": {
-                    "display": [{ "name": "Preferred Language", "locale": "en-US" }],
+                  "jobTitle": {
+                    "display": [{ "name": "Job Title", "locale": "en-US" }],
                     "value_type": "string"
                   },
                   "mail": {
                     "display": [{ "name": "Mail", "locale": "en-US" }],
+                    "value_type": "string"
+                  },
+                  "preferredLanguage": {
+                    "display": [{ "name": "Preferred Language", "locale": "en-US" }],
                     "value_type": "string"
                   },
                   "photo": {
@@ -99,30 +91,155 @@
                     "display": [{ "name": "Sensitive ID", "locale": "en-US" }],
                     "value_type": "string",
                     "mask": "regex(^(.*).{4}$)"
-                  },
-                  "reallySensitiveID": {
-                    "display": [{ "name": "Really Sensitive ID", "locale": "en-US" }],
-                    "value_type": "string",
-                    "mask": "regex((.*))"
                   }
                 }
               },
 
               "cryptographic_binding_methods_supported": ["did"],
 
-              "credential_signing_alg_values_supported": [
-                "Ed25519Signature2018"
-              ],
+              "credential_signing_alg_values_supported": ["Ed25519Signature2018"],
 
               "display": [
                 {
-                  "name": "Bank Client",
+                  "name": "Bank Employee Credential",
                   "locale": "en-US",
                   "logo": {
                     "uri": "https://www.amberoon.com/hubfs/Amberoon%202021/Homepage%202021/footer-lo_2.png",
-                    "alt_text": "a square logo of an employee verification"
+                    "alt_text": "bank employee credential"
                   },
-                  "background_color": "#fcca40",
+                  "background_color": "#1F2937",
+                  "text_color": "#FFFFFF"
+                }
+              ]
+            }
+          }
+        }
+      },
+
+      "createDID": true,
+      "didDomain": "https://yankee.openvino.org"
+    },
+
+    {
+      "issuer": {
+        "id": "manatoko_issuer",
+        "version": "v1.0",
+        "groupID": "group_manatoko_issuer",
+        "name": "Manatoko Issuer",
+        "organizationID": "f13d1va9lp403pb9lyj89vk55",
+        "url": "https://yankee.openvino.org/vc-rest-api/oidc/idp",
+        "webHook": "https://yankee.openvino.org/webhook/issue",
+        "active": true,
+
+        "vcConfig": {
+          "signingAlgorithm": "JsonWebSignature2020",
+          "signatureRepresentation": 0,
+          "keyType": "ED25519",
+          "format": "jwt",
+          "didMethod": "ion",
+          "status": { "type": "StatusList2021Entry" }
+        },
+
+        "oidcConfig": {
+          "client_id": "MANATOKO_CLIENT_ID_REEMPLAZAR",
+          "client_secret_handle": "MANATOKO_CLIENT_SECRET_HANDLE_REEMPLAZAR",
+          "issuer_well_known": "https://yankee.openvino.org/cognito/local_5a9GzRvB/.well-known/openid-configuration",
+
+          "scopes_supported": ["openid", "profile"],
+          "grant_types_supported": [
+            "authorization_code",
+            "urn:ietf:params:oauth:grant-type:pre-authorized_code"
+          ],
+          "response_types_supported": ["code"],
+          "token_endpoint_auth_methods_supported": ["none"],
+
+          "enable_dynamic_client_registration": true,
+          "pre-authorized_grant_anonymous_access_supported": true,
+          "signed_issuer_metadata_supported": true
+        },
+
+        "credentialTemplates": [
+          {
+            "id": "manatoko_user_template",
+            "type": "ManatokoUser",
+            "contexts": [
+              "https://www.w3.org/2018/credentials/v1"
+            ],
+            "issuer": "did:ion:manatoko_issuer"
+          }
+        ],
+
+        "credentialMetadata": {
+          "credential_configurations_supported": {
+            "ManatokoUser_jwt_vc_json_v1": {
+              "format": "jwt_vc_json",
+
+              "order": [
+                "displayName",
+                "givenName",
+                "surname",
+                "mail",
+                "country",
+                "documentType",
+                "documentNumber"
+              ],
+
+              "credential_definition": {
+                "type": ["VerifiableCredential", "ManatokoUser"],
+                "credentialSubject": {
+                  "displayName": {
+                    "display": [{ "name": "Full Name", "locale": "en-US" }],
+                    "value_type": "string"
+                  },
+                  "givenName": {
+                    "display": [{ "name": "Given Name", "locale": "en-US" }],
+                    "value_type": "string"
+                  },
+                  "surname": {
+                    "display": [{ "name": "Surname", "locale": "en-US" }],
+                    "value_type": "string"
+                  },
+                  "mail": {
+                    "display": [{ "name": "Email", "locale": "en-US" }],
+                    "value_type": "string"
+                  },
+                  "country": {
+                    "display": [{ "name": "Country", "locale": "en-US" }],
+                    "value_type": "string"
+                  },
+                  "documentType": {
+                    "display": [{ "name": "Document Type", "locale": "en-US" }],
+                    "value_type": "string"
+                  },
+                  "documentNumber": {
+                    "display": [{ "name": "Document Number", "locale": "en-US" }],
+                    "value_type": "string",
+                    "mask": "regex(^(.*).{4}$)"
+                  },
+                  "preferredLanguage": {
+                    "display": [{ "name": "Preferred Language", "locale": "en-US" }],
+                    "value_type": "string"
+                  },
+                  "photo": {
+                    "display": [{ "name": "Photo" }],
+                    "value_type": "image"
+                  }
+                }
+              },
+
+              "cryptographic_binding_methods_supported": ["did"],
+
+              "credential_signing_alg_values_supported": ["Ed25519Signature2018"],
+
+              "display": [
+                {
+                  "name": "Manatoko User Credential",
+                  "locale": "en-US",
+                  "logo": {
+                    "uri": "https://upload.wikimedia.org/wikipedia/commons/9/99/Sample_User_Icon.png",
+                    "alt_text": "manatoko user credential"
+                  },
+                  "background_color": "#0B1220",
                   "text_color": "#FFFFFF"
                 }
               ]
@@ -143,7 +260,7 @@
         "version": "v1.0",
         "name": "v_myprofile_jwt_verified_employee",
         "organizationID": "f13d1va9lp403pb9lyj89vk55",
-        "url": "https://test-verifier.com",
+        "url": "https://yankee.openvino.org/verifier",
         "active": true,
         "webHook": "https://yankee.openvino.org/webhook/verify",
 
@@ -178,10 +295,62 @@
                       "path": ["$.type", "$.vc.type"],
                       "filter": {
                         "type": "array",
-                        "contains": {
-                          "type": "string",
-                          "const": "VerifiedEmployee"
-                        }
+                        "contains": { "type": "string", "const": "VerifiedEmployee" }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+
+      "createDID": true
+    },
+
+    {
+      "verifier": {
+        "id": "v_manatoko_user_jwt",
+        "version": "v1.0",
+        "name": "v_manatoko_user_jwt",
+        "organizationID": "f13d1va9lp403pb9lyj89vk55",
+        "url": "https://yankee.openvino.org/verifier",
+        "active": true,
+        "webHook": "https://yankee.openvino.org/webhook/verify",
+
+        "checks": {
+          "credential": {
+            "format": ["jwt"],
+            "proof": true,
+            "status": true
+          },
+          "presentation": {
+            "format": ["jwt"],
+            "vcSubject": true,
+            "proof": true
+          }
+        },
+
+        "oidcConfig": {
+          "roSigningAlgorithm": "Ed25519Signature2018",
+          "keyType": "ED25519",
+          "didMethod": "ion"
+        },
+
+        "presentationDefinitions": [
+          {
+            "id": "a4d4f2c2-53d4-4b4c-8a4d-3b12b2ef2c01",
+            "input_descriptors": [
+              {
+                "id": "ManatokoUser",
+                "constraints": {
+                  "fields": [
+                    {
+                      "path": ["$.type", "$.vc.type"],
+                      "filter": {
+                        "type": "array",
+                        "contains": { "type": "string", "const": "ManatokoUser" }
                       }
                     }
                   ]

@@ -1,0 +1,56 @@
+services:
+  trust-registry-db:
+    image: postgres:16-alpine
+    container_name: trust-registry-db
+    environment:
+      POSTGRES_DB: trust_registry
+      POSTGRES_USER: trust_registry
+      POSTGRES_PASSWORD: trust_registry
+    volumes:
+      - trust_registry_pg:/var/lib/postgresql/data
+    networks:
+      - trust_registry_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trust_registry -d trust_registry"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  trust-registry-migrate:
+    build: .
+    container_name: trust-registry-migrate
+    environment:
+      PG_DSN: postgres://trust_registry:trust_registry@trust-registry-db:5432/trust_registry
+    depends_on:
+      trust-registry-db:
+        condition: service_healthy
+    networks:
+      - trust_registry_net
+    restart: "no"
+
+  trust-registry:
+    build: .
+    container_name: trust-registry
+    environment:
+      PORT: "8100"
+      HOST: "0.0.0.0"
+      ALLOW_ALL: "true"
+      PG_DSN: postgres://trust_registry:trust_registry@trust-registry-db:5432/trust_registry
+      # ADMIN_TOKEN: "cambiame-esto"
+    command: ["node", "src/server.js"]
+    depends_on:
+      trust-registry-db:
+        condition: service_healthy
+      trust-registry-migrate:
+        condition: service_completed_successfully
+    ports:
+      - "127.0.0.1:8100:8100"
+    networks:
+      - trust_registry_net
+    restart: unless-stopped
+
+volumes:
+  trust_registry_pg:
+
+networks:
+  trust_registry_net:
