@@ -10,9 +10,9 @@
       "controller": "did:ion:manatoko_issuer",
       "publicKeyJwk": {
         "crv": "Ed25519",
-        "kid": "PDUfDlarg_g3L6qvq3mzEPHUUeqW_fmAFHYQmQvM9uw",
+        "kid": "HSPRVddtyhv1dkqoRQVAgcyW_2rdhSXZQvStpL_FG5I",
         "kty": "OKP",
-        "x": "HfCDoBFuj0T27SJx42HfSwocOjs8TmY5GoxTldY0NB4"
+        "x": "Y6yq8BAVUXB0PDaU8t-Rk-i6dcYVKwyKlMBdevbr0PI"
       }
     }
   ],
