@@ -1,0 +1,32 @@
+{
+  "@context": [
+    "https://www.w3.org/ns/did/v1"
+  ],
+  "id": "did:web:yankee.openvino.org:issuer:bank",
+  "verificationMethod": [
+    {
+      "id": "did:web:yankee.openvino.org:issuer:bank#key-id",
+      "type": "JsonWebKey2020",
+      "controller": "did:web:yankee.openvino.org:issuer:bank",
+      "publicKeyJwk": {
+        "crv": "Ed25519",
+        "kid": "XZNv5xACJO1q-EEkSAz3OvKlQsf37A8Md82_Z1whxKA",
+        "kty": "OKP",
+        "x": "y32T2ET0Rva63cSzl1t1QyVVfiWiPwIQ3wMvpO-lLA4"
+      }
+    }
+  ],
+  "authentication": [
+    "did:web:yankee.openvino.org:issuer:bank#key-id"
+  ],
+  "assertionMethod": [
+    "did:web:yankee.openvino.org:issuer:bank#key-id"
+  ],
+  "service": [
+    {
+      "id": "did:web:yankee.openvino.org:issuer:bank#linked-domain",
+      "type": "LinkedDomains",
+      "serviceEndpoint": "https://yankee.openvino.org/.well-known/did-configuration.json"
+    }
+  ]
+}

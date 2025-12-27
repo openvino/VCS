@@ -11,9 +11,7 @@
         "webHook": "https://yankee.openvino.org/webhook/issue",
         "active": true,
         "signingDID": {
-          "did": "did:web:yankee.openvino.org:issuer:bank",
-          "kmsKeyID": "did:web:yankee.openvino.org:issuer:bank",
-          "creator": "did:web:yankee.openvino.org:issuer:bank#key-id"
+          "did": "did:web:yankee.openvino.org:issuer:bank"
         },
         "vcConfig": {
           "signingAlgorithm": "JsonWebSignature2020",
@@ -184,9 +182,7 @@
         "webHook": "https://yankee.openvino.org/webhook/issue",
         "active": true,
         "signingDID": {
-          "did": "did:web:yankee.openvino.org:issuer:manatoko",
-          "kmsKeyID": "did:web:yankee.openvino.org:issuer:manatoko",
-          "creator": "did:web:yankee.openvino.org:issuer:manatoko#key-id"
+          "did": "did:web:yankee.openvino.org:issuer:manatoko"
         },
         "vcConfig": {
           "signingAlgorithm": "JsonWebSignature2020",
@@ -369,9 +365,7 @@
         "active": true,
         "webHook": "https://yankee.openvino.org/webhook/verify",
         "signingDID": {
-          "did": "did:web:yankee.openvino.org:issuer:bank",
-          "kmsKeyID": "did:web:yankee.openvino.org:issuer:bank",
-          "creator": "did:web:yankee.openvino.org:issuer:bank#key-id"
+          "did": "did:web:yankee.openvino.org:issuer:bank"
         },
         "checks": {
           "credential": {
@@ -434,9 +428,7 @@
         "active": true,
         "webHook": "https://yankee.openvino.org/webhook/verify",
         "signingDID": {
-          "did": "did:web:yankee.openvino.org:issuer:manatoko",
-          "kmsKeyID": "did:web:yankee.openvino.org:issuer:manatoko",
-          "creator": "did:web:yankee.openvino.org:issuer:manatoko#key-id"
+          "did": "did:web:yankee.openvino.org:issuer:manatoko"
         },
         "checks": {
           "credential": {

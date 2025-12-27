@@ -10,9 +10,9 @@
       "controller": "did:ion:bank_issuer",
       "publicKeyJwk": {
         "crv": "Ed25519",
-        "kid": "DLHG9WDT2o2s2ZuoJkR2xoJaL0uikXL42d7jcWZdQ1A",
+        "kid": "9bQRIufhR_1Qtj29U2Yq5Lttu-kRK2IiJEiW1RdE0QE",
         "kty": "OKP",
-        "x": "eIm9NAyxoz88P6Og46DY4kdJ0_8BVIu1L3qFihqdskA"
+        "x": "arKbp8EIvWq_4X-Hfw2ZR_m7IBP87-2RrXEuUad97wQ"
       }
     }
   ],

@@ -10,17 +10,12 @@
         "url": "https://yankee.openvino.org/vc-rest-api/oidc/idp",
         "webHook": "https://yankee.openvino.org/webhook/issue",
         "active": true,
-        "signingDID": {
-          "did": "did:web:yankee.openvino.org:issuer:bank",
-          "kmsKeyID": "did:web:yankee.openvino.org:issuer:bank",
-          "creator": "did:web:yankee.openvino.org:issuer:bank#key-id"
-        },
         "vcConfig": {
           "signingAlgorithm": "JsonWebSignature2020",
           "signatureRepresentation": 0,
           "keyType": "ED25519",
           "format": "jwt",
-          "didMethod": "web",
+          "didMethod": "ion",
           "status": {
             "type": "StatusList2021Entry"
           }
@@ -54,7 +49,7 @@
             "contexts": [
               "https://www.w3.org/2018/credentials/v1"
             ],
-            "issuer": "did:web:yankee.openvino.org:issuer:bank"
+            "issuer": "did:ion:bank_issuer"
           }
         ],
         "credentialMetadata": {
@@ -170,7 +165,7 @@
           }
         }
       },
-      "createDID": false,
+      "createDID": true,
       "didDomain": "https://yankee.openvino.org"
     },
     {
@@ -183,17 +178,12 @@
         "url": "https://yankee.openvino.org/vc-rest-api/oidc/idp",
         "webHook": "https://yankee.openvino.org/webhook/issue",
         "active": true,
-        "signingDID": {
-          "did": "did:web:yankee.openvino.org:issuer:manatoko",
-          "kmsKeyID": "did:web:yankee.openvino.org:issuer:manatoko",
-          "creator": "did:web:yankee.openvino.org:issuer:manatoko#key-id"
-        },
         "vcConfig": {
           "signingAlgorithm": "JsonWebSignature2020",
           "signatureRepresentation": 0,
           "keyType": "ED25519",
           "format": "jwt",
-          "didMethod": "web",
+          "didMethod": "ion",
           "status": {
             "type": "StatusList2021Entry"
           }
@@ -201,7 +191,7 @@
         "oidcConfig": {
           "client_id": "MANATOKO_CLIENT_ID_REEMPLAZAR",
           "client_secret_handle": "MANATOKO_CLIENT_SECRET_HANDLE_REEMPLAZAR",
-          "issuer_well_known": "https://yankee.openvino.org/cognito/local_5a9GzRvB/.well-known/openid-configuration",
+          "issuer_well_known": "https://yankee.openvino.org/realms/vcs/.well-known/openid-configuration",
           "scopes_supported": [
             "openid",
             "profile"
@@ -227,7 +217,7 @@
             "contexts": [
               "https://www.w3.org/2018/credentials/v1"
             ],
-            "issuer": "did:web:yankee.openvino.org:issuer:manatoko"
+            "issuer": "did:ion:manatoko_issuer"
           }
         ],
         "credentialMetadata": {
@@ -354,7 +344,7 @@
           }
         }
       },
-      "createDID": false,
+      "createDID": true,
       "didDomain": "https://yankee.openvino.org"
     }
   ],
@@ -368,11 +358,6 @@
         "url": "https://yankee.openvino.org/verifier",
         "active": true,
         "webHook": "https://yankee.openvino.org/webhook/verify",
-        "signingDID": {
-          "did": "did:web:yankee.openvino.org:issuer:bank",
-          "kmsKeyID": "did:web:yankee.openvino.org:issuer:bank",
-          "creator": "did:web:yankee.openvino.org:issuer:bank#key-id"
-        },
         "checks": {
           "credential": {
             "format": [
@@ -392,7 +377,7 @@
         "oidcConfig": {
           "roSigningAlgorithm": "Ed25519Signature2018",
           "keyType": "ED25519",
-          "didMethod": "web"
+          "didMethod": "ion"
         },
         "presentationDefinitions": [
           {
@@ -422,7 +407,7 @@
           }
         ]
       },
-      "createDID": false
+      "createDID": true
     },
     {
       "verifier": {
@@ -433,11 +418,6 @@
         "url": "https://yankee.openvino.org/verifier",
         "active": true,
         "webHook": "https://yankee.openvino.org/webhook/verify",
-        "signingDID": {
-          "did": "did:web:yankee.openvino.org:issuer:manatoko",
-          "kmsKeyID": "did:web:yankee.openvino.org:issuer:manatoko",
-          "creator": "did:web:yankee.openvino.org:issuer:manatoko#key-id"
-        },
         "checks": {
           "credential": {
             "format": [
@@ -457,7 +437,7 @@
         "oidcConfig": {
           "roSigningAlgorithm": "Ed25519Signature2018",
           "keyType": "ED25519",
-          "didMethod": "web"
+          "didMethod": "ion"
         },
         "presentationDefinitions": [
           {
@@ -487,7 +467,7 @@
           }
         ]
       },
-      "createDID": false
+      "createDID": true
     }
   ]
 }
