@@ -286,6 +286,92 @@ Optional (recommended for future hardening):
 
 ### 8.4 Start / Stop the Trust Registry
 
+---
+
+### 8.4.1 Accessing the Trust Registry database (PostgreSQL)
+
+The Trust Registry database runs **inside the Docker container**
+`trust-registry-db` and is **not exposed** on a public port.
+
+To connect to the database, use `docker compose exec` (recommended).
+
+#### Connect using psql (interactive)
+
+From the directory containing `docker-compose.yml`:
+
+```bash
+docker compose ps
+docker compose exec trust-registry-db psql -U trust_registry -d trust_registry
+```
+
+If using the legacy `docker-compose` binary:
+
+```bash
+docker-compose exec trust-registry-db psql -U trust_registry -d trust_registry
+```
+
+If you are not in the compose directory, you can also use:
+
+```bash
+docker exec -it trust-registry-db psql -U trust_registry -d trust_registry
+```
+
+---
+
+#### Useful psql commands
+
+Once inside `psql`:
+
+```sql
+-- list tables
+\dt
+
+-- describe the main trust table
+\d trust_entries
+
+-- list recent trust changes
+select *
+from trust_entries
+order by updated_at desc
+limit 50;
+
+-- count entries by subject type (issuer / verifier / wallet)
+select subject_type, count(*)
+from trust_entries
+group by subject_type
+order by count(*) desc;
+```
+
+Exit `psql`:
+
+```sql
+\q
+```
+
+---
+
+#### Inspect logs (debugging)
+
+If an endpoint appears to hang or time out, inspect the service logs:
+
+```bash
+docker compose logs -f trust-registry
+docker compose logs -f trust-registry-db
+```
+
+---
+
+#### Reset database (DANGER)
+
+⚠️ This removes **all trust registry data**.
+
+```bash
+docker compose down -v
+docker compose up -d
+```
+
+Use this only for development or when explicitly rebuilding the registry.
+
 #### Start (build + run)
 
 ```bash
