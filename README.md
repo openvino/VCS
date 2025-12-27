@@ -140,7 +140,7 @@ Monitor logs with `journalctl -u vc-rest -f`.
 
 ## 6. Linked Domains (DID configuration)
 
-Generate the linked-domain credential and DID document:
+Generate the linked-domain credential and DID documents:
 
 ```bash
 cd /var/www/VCS/vcs
@@ -149,10 +149,21 @@ cd tools/didconfig
 go run .
 ```
 
+**DID generation logic update (2024):**
+
+- The DID generator now derives issuer and verifier DIDs **directly from the profile definitions in `profiles/profiles.json`**.
+    - If a profile's `id` field **already starts with `did:`** (e.g., `did:web:yankee.openvino.org/issuer`), it is used **as-is**.
+    - If the `id` does **not** start with `did:`, the tool falls back to legacy behavior and **prefixes `did:ion:`** (legacy compatibility).
+    - This allows for seamless adoption of `did:web` and other methods per profile.
+
+> **Note:** On **yankee**, issuer and verifier profiles are expected to use `did:web` identifiers (e.g., `did:web:yankee.openvino.org/issuer`). The wallet DID method is independent and wallet-controlled.
+
 This creates:
 
-- `/var/www/VCS/.well-known/did-configuration.json`
-- `/var/www/VCS/vcs/test/bdd/fixtures/file-server/dids/did-ion-bank-issuer.json`
+- `/.well-known/did-configuration.json`
+- `/var/www/VCS/files/dids/*.json` (DID documents generated dynamically from profiles)
+
+> **Legacy note:** The old path `/var/www/VCS/vcs/test/bdd/fixtures/file-server/dids/did-ion-bank-issuer.json` is still supported for legacy BDD/mock flows, but all new DIDs are generated under `/var/www/VCS/files/dids/` based on profile configuration.
 
 ## 7. DID Resolver
 
@@ -175,6 +186,11 @@ This creates:
   ]
 }
 ```
+
+**Resolver logic update:**  
+- The resolver rules **no longer hardcode `did:ion:*` identifiers** for issuers/verifiers.
+- The resolver must be able to resolve `did:web:*` DIDs based on the files generated from `profiles/profiles.json` (see section 6), using standard web DID resolution (`did:web:yankee.openvino.org/issuer` → `https://yankee.openvino.org/files/dids/issuer.json` or similar).
+- Legacy rules for `did:ion:*` are maintained for backwards compatibility, but new issuer/verifier DIDs should use `did:web` on yankee.
 
 ### 6.2 Run the resolver container
 

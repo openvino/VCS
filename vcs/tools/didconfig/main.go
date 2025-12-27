@@ -107,7 +107,7 @@ func main() {
 	sort.SliceStable(issuers, func(i, j int) bool { return issuers[i].ID < issuers[j].ID })
 
 	for _, iss := range issuers {
-		issuerDID := "did:ion:" + iss.ID
+		issuerDID := normalizeDID(iss.ID)
 		verificationMethod := issuerDID + "#key-id"
 
 		// 1) linked_dids (JWT VC Domain Linkage)
@@ -131,7 +131,8 @@ func main() {
 			continue
 		}
 
-		filename := "did-ion-" + iss.ID + ".json" // mantiene underscore si el issuer ID lo tiene
+		filename := didFilename(issuerDID)
+
 		fixturePath := filepath.Join(fixturesDidDir, filename)
 
 		if err := writeFile(fixturePath, docBytes); err != nil {
@@ -414,6 +415,30 @@ func newStaticDIDDoc(issuerDID, verificationMethod string) *did.Doc {
 		Relationship:       did.Authentication,
 	}}
 	return doc
+}
+
+// normalizeDID makes issuer IDs flexible:
+// - If profiles.json provides a full DID (e.g. did:web:..., did:ion:..., did:pkh:...), use it as-is.
+// - If it provides a bare ION suffix (legacy), prefix it with did:ion:.
+func normalizeDID(id string) string {
+	id = strings.TrimSpace(id)
+	if id == "" {
+		return id
+	}
+	if strings.HasPrefix(id, "did:") {
+		return id
+	}
+	// Legacy behavior: profiles used to store only the ION suffix.
+	return "did:ion:" + id
+}
+
+// didFilename turns a DID into a stable, filesystem-safe filename.
+// Example: did:web:yankee.openvino.org -> did-did-web-yankee.openvino.org.json
+func didFilename(did string) string {
+	// keep dots (domain) but replace separators that are awkward in filenames
+	s := strings.ReplaceAll(did, "/", "-")
+	s = strings.ReplaceAll(s, ":", "-")
+	return "did-" + s + ".json"
 }
 
 func getenvDefault(name, def string) string {
