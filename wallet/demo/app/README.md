@@ -39,26 +39,6 @@ samples, guidance on mobile development, and a full API reference.
   - For android setup - install [Android Studio](https://docs.flutter.dev/get-started/install/macos#android-setup)
 
 ### Build and Run
-
-#### Using FVM (Flutter Version Manager)
-
-[FVM](https://fvm.app/) is a recommended tool to manage Flutter SDK versions on a per-project basis.
-
-1.  **Install FVM:**
-    ```bash
-    dart pub global activate fvm
-    ```
-    If you encounter an error like `fvm as globally activated doesn't support Dart...`, re-run the command above to update `fvm`.
-
-2.  **Configure FVM:**
-    This project is already configured to use a specific Flutter version. `fvm` will automatically use it.
-
-3.  **Run the app:**
-    Use `fvm` to run any flutter command. For example, to run the app:
-    ```bash
-    fvm flutter run
-    ```
-
 - Build the SDK Bindings 
   - For Android/iOS, [refer here](https://github.com/trustbloc/wallet-sdk/blob/main/cmd/wallet-sdk-gomobile/README.md).
   - For Web App, [refer here](https://github.com/trustbloc/wallet-sdk/blob/main/cmd/wallet-sdk-js/README.md).

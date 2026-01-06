@@ -40,35 +40,6 @@ The TrustBloc Wallet SDK implements following specifications.
 - [GoMobile Bindings (iOS/Android)](cmd/wallet-sdk-gomobile/README.md)
 - [Demo/Reference App](demo/app/README.md)
 
-## Local backend prerequisites
-If you plan to run the TrustBloc VCS backend locally to exercise the wallet SDK end-to-end, you need MongoDB (and optionally Redis) running on your machine. The quickest way to satisfy the MongoDB requirement is to start a disposable Docker container:
-
-```
-docker run --name mongo-vcs -p 27017:27017 -d mongo:6
-```
-
-Common maintenance commands while the container is running:
-
-```
-# Inspect logs
-docker logs -f mongo-vcs
-# Open vars reference (list of env vars): vim vcs/cmd/vc-rest/startcmd/params.go
-
-# Open a shell
-docker exec -it mongo-vcs mongosh
-
-# Stop/start
-docker stop mongo-vcs
-docker start mongo-vcs
-
-# Remove it entirely
-docker rm mongo-vcs
-```
-
-Point your VCS instance (see the [`trustbloc/vcs`](https://github.com/trustbloc/vcs) repo) at this instance via `VC_REST_MONGODB_CONNECTION_STRING=mongodb://localhost:27017`. Once the backend is up, the wallet SDK or demo app can connect to it using the usual issuer/verifier profile configuration.
-
-You can bootstrap all required environment variables by copying `vcs/env/local.env.example` to a local `.env` file, filling in the placeholders, and running `source <your-env-file>` before starting `vc-rest`.
-
 ## Library/Package
 
 ### Android
